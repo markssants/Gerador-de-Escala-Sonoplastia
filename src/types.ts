@@ -19,6 +19,7 @@ export interface Member {
   unavailableDays: UnavailableDay[];
   unavailableDates?: UnavailableDate[];
   color?: string;
+  roles?: string[];
 }
 
 export interface Team {

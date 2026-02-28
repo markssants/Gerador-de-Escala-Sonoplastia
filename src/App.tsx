@@ -2,14 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Calendar as CalendarIcon, 
-  Plus, 
   Trash2, 
   Settings, 
   ChevronRight, 
   ChevronLeft,
-  CheckCircle2,
   AlertCircle,
-  UserPlus,
   ShieldCheck,
   Clock,
   LayoutGrid,
@@ -31,49 +28,34 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Member, Team, Assignment, DayOfWeek, MemberType } from './types';
-import { generateSchedule } from './utils/scheduler';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-const DAYS_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
-  0: 'Domingo',
-  1: 'Segunda',
-  2: 'Terça',
-  3: 'Quarta',
-  4: 'Quinta',
-  5: 'Sexta',
-  6: 'Sábado'
-};
-
-const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+import { generateSchedule, getServiceDays } from './utils/scheduler';
+import { MemberManager } from './components/MemberManager';
+import { cn } from './utils/cn';
+import { DAYS_OF_WEEK_LABELS, WEEK_DAYS } from './constants';
 
 export default function App() {
   const [members, setMembers] = useState<Member[]>(() => {
-    const saved = localStorage.getItem('sonosched_members_v5');
+    const saved = localStorage.getItem('sonosched_members_v8');
     if (saved) return JSON.parse(saved);
     
     // Default sample members
     return [
-      { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1' },
-      { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981' },
-      { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b' },
-      { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e' },
-      { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6' },
-      { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4' },
-      { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [] },
-      { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [] },
-      { id: '9', name: 'Milena', type: 'participant', unavailableDays: [] },
-      { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [] },
-      { id: '11', name: 'Letícia', type: 'participant', unavailableDays: [] },
-      { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [] },
-      { id: '13', name: 'Luis', type: 'participant', unavailableDays: [] },
-      { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [] },
-      { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [] },
-      { id: '16', name: 'Davi', type: 'participant', unavailableDays: [] },
+      { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1', roles: [] },
+      { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981', roles: ['Diácono'] },
+      { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono', 'Recepcionista'] },
+      { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
+      { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6', roles: ['Diácono'] },
+      { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4', roles: ['Diácono'] },
+      { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
+      { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+      { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
+      { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
+      { id: '11', name: 'Letícia', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
+      { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+      { id: '13', name: 'L. Fernando', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+      { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
+      { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+      { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
     ];
   });
   
@@ -82,91 +64,55 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'members' | 'schedule'>('schedule');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   
-  // Member Form State
-  const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberType, setNewMemberType] = useState<MemberType>('leader');
+  const currentMonthServiceDays = useMemo(() => {
+    return getServiceDays(currentDate.getMonth(), currentDate.getFullYear());
+  }, [currentDate]);
 
   useEffect(() => {
-    localStorage.setItem('sonosched_members_v5', JSON.stringify(members));
+    localStorage.setItem('sonosched_members_v8', JSON.stringify(members));
   }, [members]);
 
   const handleResetToDefault = () => {
-    if (confirm('Deseja resetar a lista de membros para o padrão? Isso apagará todos os membros atuais.')) {
+    if (window.confirm('Deseja resetar a lista de membros para o padrão? Isso apagará todos os membros atuais.')) {
       const defaultMembers: Member[] = [
-        { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1' },
-        { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981' },
-        { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b' },
-        { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e' },
-        { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6' },
-        { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4' },
-        { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [] },
-        { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [] },
-        { id: '9', name: 'Milena', type: 'participant', unavailableDays: [] },
-        { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [] },
-        { id: '11', name: 'Letícia', type: 'participant', unavailableDays: [] },
-        { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [] },
-        { id: '13', name: 'Luis', type: 'participant', unavailableDays: [] },
-        { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [] },
-        { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [] },
-        { id: '16', name: 'Davi', type: 'participant', unavailableDays: [] },
+        { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1', roles: [] },
+        { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981', roles: ['Diácono'] },
+        { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono', 'Recepcionista'] },
+        { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
+        { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6', roles: ['Diácono'] },
+        { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4', roles: ['Diácono'] },
+        { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
+        { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+        { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
+        { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
+        { id: '11', name: 'Letícia', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
+        { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+        { id: '13', name: 'L. Fernando', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+        { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
+        { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+        { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
       ];
       setMembers(defaultMembers);
       setSchedule([]);
+      localStorage.removeItem('sonosched_members_v8');
     }
-  };
-
-  const handleAddMember = () => {
-    if (!newMemberName.trim()) return;
-    
-    // Assign a random color if it's a leader
-    const leaderColors = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
-    const randomColor = leaderColors[Math.floor(Math.random() * leaderColors.length)];
-
-    const newMember: Member = {
-      id: crypto.randomUUID(),
-      name: newMemberName,
-      type: newMemberType,
-      unavailableDays: [],
-      color: newMemberType === 'leader' ? randomColor : undefined
-    };
-    setMembers([...members, newMember]);
-    setNewMemberName('');
   };
 
   const handleRemoveMember = (id: string) => {
     setMembers(members.filter(m => m.id !== id));
   };
 
-  const toggleUnavailableDay = (memberId: string, day: DayOfWeek) => {
-    setMembers(members.map(m => {
-      if (m.id === memberId) {
-        const exists = m.unavailableDays.find(ud => ud.dayOfWeek === day);
-        if (exists) {
-          return { ...m, unavailableDays: m.unavailableDays.filter(ud => ud.dayOfWeek !== day) };
-        } else {
-          return { ...m, unavailableDays: [...m.unavailableDays, { dayOfWeek: day, role: 'Ocupado' }] };
-        }
-      }
-      return m;
-    }));
-  };
-
-  const addUnavailableDate = (memberId: string, date: string, role: string) => {
-    if (!date || !role) return;
+  const toggleUnavailableDate = (memberId: string, date: string) => {
     setMembers(members.map(m => {
       if (m.id === memberId) {
         const dates = m.unavailableDates || [];
-        if (dates.some(d => d.date === date)) return m;
-        return { ...m, unavailableDates: [...dates, { date, role }] };
-      }
-      return m;
-    }));
-  };
-
-  const removeUnavailableDate = (memberId: string, date: string) => {
-    setMembers(members.map(m => {
-      if (m.id === memberId) {
-        return { ...m, unavailableDates: (m.unavailableDates || []).filter(d => d.date !== date) };
+        const exists = dates.find(d => d.date === date);
+        if (exists) {
+          return { ...m, unavailableDates: dates.filter(d => d.date !== date) };
+        } else {
+          const role = prompt('Qual o compromisso? (Ex: Diaconato, Recepção)') || 'Ocupado';
+          return { ...m, unavailableDates: [...dates, { date, role }] };
+        }
       }
       return m;
     }));
@@ -177,7 +123,7 @@ export default function App() {
     const participants = members.filter(m => m.type === 'participant');
 
     if (leaders.length < 6 || participants.length < 4) {
-      alert('Você precisa de pelo menos 6 líderes e 4 auxiliares para gerar as equipes (4 equipes com auxiliares e 2 equipes individuais).');
+      alert('Você precisa de pelo menos 6 líderes e 4 auxiliares para gerar as equipes.');
       return;
     }
 
@@ -188,9 +134,6 @@ export default function App() {
     );
     setSchedule(newSchedule);
   };
-
-  const leadersCount = members.filter(m => m.type === 'leader').length;
-  const participantsCount = members.filter(m => m.type === 'participant').length;
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentDate));
@@ -235,197 +178,14 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {activeTab === 'members' ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Add Member Card */}
-              <div className="bg-[#121720] p-6 rounded-2xl shadow-xl border border-white/5 h-fit">
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
-                  <UserPlus size={20} className="text-indigo-400" />
-                  Novo Membro
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nome</label>
-                    <input 
-                      type="text" 
-                      value={newMemberName}
-                      onChange={(e) => setNewMemberName(e.target.value)}
-                      placeholder="Ex: João Silva"
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Função</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => setNewMemberType('leader')}
-                        className={cn(
-                          "py-2 rounded-xl text-sm font-medium border transition-all",
-                          newMemberType === 'leader' ? "bg-indigo-500/10 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"
-                        )}
-                      >
-                        Líder
-                      </button>
-                      <button 
-                        onClick={() => setNewMemberType('participant')}
-                        className={cn(
-                          "py-2 rounded-xl text-sm font-medium border transition-all",
-                          newMemberType === 'participant' ? "bg-indigo-500/10 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"
-                        )}
-                      >
-                        Auxiliar
-                      </button>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={handleAddMember}
-                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
-                  >
-                    <Plus size={18} />
-                    Adicionar
-                  </button>
-                </div>
-              </div>
-
-              {/* Stats Card */}
-              <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                <div className="bg-[#121720] p-6 rounded-2xl shadow-xl border border-white/5 flex flex-col justify-between group">
-                  <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Líderes</span>
-                  <div className="flex items-end justify-between">
-                    <span className="text-5xl font-bold text-white group-hover:text-indigo-400 transition-colors tracking-tighter">{leadersCount}</span>
-                    <span className={cn("text-[10px] px-2.5 py-1 rounded-full font-bold tracking-widest uppercase", leadersCount >= 6 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20")}>
-                      {leadersCount >= 6 ? 'OK' : 'Mínimo 6'}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-[#121720] p-6 rounded-2xl shadow-xl border border-white/5 flex flex-col justify-between group">
-                  <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Auxiliares</span>
-                  <div className="flex items-end justify-between">
-                    <span className="text-5xl font-bold text-white group-hover:text-indigo-400 transition-colors tracking-tighter">{participantsCount}</span>
-                    <span className={cn("text-[10px] px-2.5 py-1 rounded-full font-bold tracking-widest uppercase", participantsCount >= 4 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20")}>
-                      {participantsCount >= 4 ? 'OK' : 'Mínimo 4'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Members List */}
-            <div className="bg-[#121720] rounded-2xl shadow-xl border border-white/5 overflow-hidden">
-              <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Lista de Membros e Restrições</h2>
-                  <p className="text-xs text-slate-500 mt-1">Marque os dias que o membro já possui compromisso (Diácono, Recepção, etc.)</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={handleResetToDefault}
-                    className="text-[10px] font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors"
-                  >
-                    Resetar para Padrão
-                  </button>
-                  <Users size={24} className="text-slate-700" />
-                </div>
-              </div>
-              <div className="divide-y divide-white/5">
-                {members.length === 0 ? (
-                  <div className="p-16 text-center text-slate-600 flex flex-col items-center gap-3">
-                    <Users size={40} className="opacity-20" />
-                    <p className="font-medium">Nenhum membro cadastrado ainda.</p>
-                  </div>
-                ) : (
-                  members.map(member => (
-                    <div key={member.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div 
-                          className={cn(
-                            "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg shadow-inner",
-                            member.type === 'leader' ? "text-white" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          )}
-                          style={member.type === 'leader' && member.color ? { backgroundColor: member.color } : {}}
-                        >
-                          {member.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-white text-base">{member.name}</h3>
-                          <span className={cn(
-                            "text-[10px] font-bold uppercase tracking-widest",
-                            member.type === 'leader' ? "text-indigo-500" : "text-emerald-500"
-                          )}>
-                            {member.type === 'leader' ? 'Líder' : 'Auxiliar'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mr-2">Indisponível em:</span>
-                          {[0, 3, 6].map((day) => (
-                            <button
-                              key={day}
-                              onClick={() => toggleUnavailableDay(member.id, day as DayOfWeek)}
-                              className={cn(
-                                "px-4 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                                member.unavailableDays.some(ud => ud.dayOfWeek === day)
-                                  ? "bg-rose-500/10 border-rose-500/50 text-rose-400"
-                                  : "bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:bg-white/10"
-                              )}
-                            >
-                              {DAYS_OF_WEEK_LABELS[day as DayOfWeek]}
-                            </button>
-                          ))}
-                          <button 
-                            onClick={() => handleRemoveMember(member.id)}
-                            className="p-2.5 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all ml-2"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-
-                        {/* Specific Dates Section */}
-                        <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Compromissos Extras (Diaconato, Recepção, etc.)</span>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {(member.unavailableDates || []).map((ud, idx) => (
-                              <div key={idx} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-lg">
-                                <span className="text-[10px] font-bold text-indigo-400">{format(new Date(ud.date), 'dd/MM')}</span>
-                                <span className="text-[10px] text-slate-400">({ud.role})</span>
-                                <button 
-                                  onClick={() => removeUnavailableDate(member.id, ud.date)}
-                                  className="text-slate-500 hover:text-rose-400"
-                                >
-                                  <Trash2 size={10} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <input 
-                              type="date" 
-                              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-indigo-500/50"
-                              onChange={(e) => {
-                                const date = e.target.value;
-                                if (date) {
-                                  const role = prompt('Qual o compromisso? (Ex: Diaconato, Recepção)');
-                                  if (role) addUnavailableDate(member.id, date, role);
-                                  e.target.value = '';
-                                }
-                              }}
-                            />
-                            <p className="text-[9px] text-slate-600 self-center italic">Selecione uma data para adicionar um compromisso</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          <MemberManager 
+            members={members}
+            currentDate={currentDate}
+            currentMonthServiceDays={currentMonthServiceDays}
+            onToggleUnavailableDate={toggleUnavailableDate}
+            onRemoveMember={handleRemoveMember}
+            onResetToDefault={handleResetToDefault}
+          />
         ) : (
           <div className="space-y-6">
             {/* Schedule Controls */}
