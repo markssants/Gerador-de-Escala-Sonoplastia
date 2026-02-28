@@ -13,6 +13,7 @@ interface MemberManagerProps {
   onToggleUnavailableDate: (memberId: string, date: string) => void;
   onRemoveMember: (id: string) => void;
   onResetToDefault: () => void;
+  theme: 'dark' | 'light';
 }
 
 export const MemberManager: React.FC<MemberManagerProps> = ({
@@ -22,6 +23,7 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
   onToggleUnavailableDate,
   onRemoveMember,
   onResetToDefault,
+  theme,
 }) => {
   const diaconosOrder = ['Kalebe', 'Wales', 'Marcos', 'Joabe', 'Claudinei', 'L. Davi', 'Edmilson', 'Victor', 'Weverson', 'L. Fernando'];
   const recepcionistasOrder = ['Letícia', 'Weverson', 'Milena', 'L. Davi', 'Marcos'];
@@ -40,7 +42,10 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
     .filter((m): m is Member => !!m);
 
   const renderMemberCard = (member: Member) => (
-    <div key={member.id} className="p-6 flex flex-col gap-6 hover:bg-white/[0.01] transition-colors">
+    <div key={member.id} className={cn(
+      "p-6 flex flex-col gap-6 transition-colors",
+      theme === 'dark' ? "hover:bg-white/[0.01]" : "hover:bg-slate-50"
+    )}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div 
@@ -53,7 +58,10 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
             {member.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h3 className="font-bold text-white text-lg tracking-tight">{member.name}</h3>
+            <h3 className={cn(
+              "font-bold text-lg tracking-tight transition-colors",
+              theme === 'dark' ? "text-white" : "text-slate-900"
+            )}>{member.name}</h3>
             <div className="flex gap-2 mt-0.5">
               <span className={cn(
                 "text-[10px] font-black uppercase tracking-[0.2em]",
@@ -64,7 +72,10 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
               {member.roles && member.roles.length > 0 && (
                 <div className="flex gap-1">
                   {member.roles.map(role => (
-                    <span key={role} className="text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-slate-500 border border-white/5 font-bold uppercase tracking-widest">
+                    <span key={role} className={cn(
+                      "text-[8px] px-1.5 py-0.5 rounded-full border font-bold uppercase tracking-widest transition-colors",
+                      theme === 'dark' ? "bg-white/5 text-slate-500 border-white/5" : "bg-slate-100 text-slate-400 border-slate-200"
+                    )}>
                       {role}
                     </span>
                   ))}
@@ -75,14 +86,20 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
         </div>
         <button 
           onClick={() => onRemoveMember(member.id)}
-          className="p-3 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+          className={cn(
+            "p-3 rounded-xl transition-all",
+            theme === 'dark' ? "text-slate-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-slate-300 hover:text-rose-500 hover:bg-rose-50"
+          )}
           title="Remover Membro"
         >
           <Trash2 size={20} />
         </button>
       </div>
 
-      <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+      <div className={cn(
+        "p-4 rounded-2xl border transition-colors",
+        theme === 'dark' ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100"
+      )}>
         <div className="grid grid-cols-3 gap-6">
           {[0, 3, 6].map((dayOfWeek) => {
             const days = currentMonthServiceDays.filter(d => getDay(d) === dayOfWeek);
@@ -90,7 +107,10 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
             
             return (
               <div key={dayOfWeek} className="flex flex-col gap-3">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] text-center border-b border-white/5 pb-2">
+                <span className={cn(
+                  "text-[9px] font-black uppercase tracking-[0.3em] text-center border-b pb-2 transition-colors",
+                  theme === 'dark' ? "text-slate-500 border-white/5" : "text-slate-400 border-slate-200"
+                )}>
                   {DAYS_OF_WEEK_LABELS[dayOfWeek as DayOfWeek]}s
                 </span>
                 <div className="flex flex-col gap-2">
@@ -106,7 +126,9 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
                           "px-3 py-3 rounded-xl text-[11px] font-bold border transition-all flex flex-col items-center gap-1 w-full group relative overflow-hidden",
                           commitment
                             ? "bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-lg shadow-rose-500/5"
-                            : "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10"
+                            : theme === 'dark' 
+                              ? "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10"
+                              : "bg-white border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300"
                         )}
                       >
                         <span className="text-xs tracking-tight">{format(date, 'dd/MM')}</span>
@@ -129,57 +151,93 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-[#121720] rounded-2xl shadow-xl border border-white/5 overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center">
+      <div className={cn(
+        "rounded-2xl shadow-xl border overflow-hidden transition-colors",
+        theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
+      )}>
+        <div className={cn(
+          "p-6 border-b flex justify-between items-center transition-colors",
+          theme === 'dark' ? "border-white/5" : "border-slate-100"
+        )}>
           <div>
-            <h2 className="text-lg font-semibold text-white">Gerenciamento de Disponibilidade</h2>
+            <h2 className={cn(
+              "text-lg font-semibold transition-colors",
+              theme === 'dark' ? "text-white" : "text-slate-900"
+            )}>Gerenciamento de Disponibilidade</h2>
             <p className="text-xs text-slate-500 mt-1">Marque os dias que o membro já possui compromisso em {format(currentDate, 'MMMM', { locale: ptBR })}</p>
           </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={onResetToDefault}
-              className="text-[10px] font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors"
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-widest transition-colors",
+                theme === 'dark' ? "text-slate-500 hover:text-indigo-400" : "text-slate-400 hover:text-indigo-600"
+              )}
             >
               Resetar para Padrão
             </button>
-            <Users size={24} className="text-slate-700" />
+            <Users size={24} className={theme === 'dark' ? "text-slate-700" : "text-slate-200"} />
           </div>
         </div>
         
-        <div className="divide-y divide-white/5">
+        <div className={cn(
+          "divide-y transition-colors",
+          theme === 'dark' ? "divide-white/5" : "divide-slate-100"
+        )}>
           {members.length === 0 ? (
             <div className="p-16 text-center text-slate-600 flex flex-col items-center gap-3">
               <Users size={40} className="opacity-20" />
               <p className="font-medium">Nenhum membro cadastrado ainda.</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className={cn(
+              "divide-y transition-colors",
+              theme === 'dark' ? "divide-white/5" : "divide-slate-100"
+            )}>
               {diaconos.length > 0 && (
-                <div className="bg-indigo-500/5">
-                  <div className="px-6 py-3 border-b border-white/5">
+                <div className={theme === 'dark' ? "bg-indigo-500/5" : "bg-indigo-50/30"}>
+                  <div className={cn(
+                    "px-6 py-3 border-b transition-colors",
+                    theme === 'dark' ? "border-white/5" : "border-slate-100"
+                  )}>
                     <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Diáconos</h3>
                   </div>
-                  <div className="divide-y divide-white/5">
+                  <div className={cn(
+                    "divide-y transition-colors",
+                    theme === 'dark' ? "divide-white/5" : "divide-slate-100"
+                  )}>
                     {diaconos.map(renderMemberCard)}
                   </div>
                 </div>
               )}
               {recepcionistas.length > 0 && (
-                <div className="bg-emerald-500/5">
-                  <div className="px-6 py-3 border-b border-white/5">
+                <div className={theme === 'dark' ? "bg-emerald-500/5" : "bg-emerald-50/30"}>
+                  <div className={cn(
+                    "px-6 py-3 border-b transition-colors",
+                    theme === 'dark' ? "border-white/5" : "border-slate-100"
+                  )}>
                     <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Recepcionistas</h3>
                   </div>
-                  <div className="divide-y divide-white/5">
+                  <div className={cn(
+                    "divide-y transition-colors",
+                    theme === 'dark' ? "divide-white/5" : "divide-slate-100"
+                  )}>
                     {recepcionistas.map(renderMemberCard)}
                   </div>
                 </div>
               )}
               {semAtribuicao.length > 0 && (
-                <div className="bg-slate-500/5">
-                  <div className="px-6 py-3 border-b border-white/5">
+                <div className={theme === 'dark' ? "bg-slate-500/5" : "bg-slate-50/30"}>
+                  <div className={cn(
+                    "px-6 py-3 border-b transition-colors",
+                    theme === 'dark' ? "border-white/5" : "border-slate-100"
+                  )}>
                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Sem Atribuição</h3>
                   </div>
-                  <div className="divide-y divide-white/5">
+                  <div className={cn(
+                    "divide-y transition-colors",
+                    theme === 'dark' ? "divide-white/5" : "divide-slate-100"
+                  )}>
                     {semAtribuicao.map(renderMemberCard)}
                   </div>
                 </div>

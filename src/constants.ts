@@ -11,3 +11,5 @@ export const DAYS_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
 };
 
 export const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+export const SERVICE_WEEK_DAYS = ['Dom', 'Qua', 'Sáb'];

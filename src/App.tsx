@@ -7,10 +7,12 @@ import {
   ChevronRight, 
   ChevronLeft,
   AlertCircle,
-  ShieldCheck,
+  Volume2,
   Clock,
   LayoutGrid,
-  List
+  List,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { 
   format, 
@@ -59,10 +61,18 @@ export default function App() {
     ];
   });
   
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(addMonths(new Date(), 1));
   const [schedule, setSchedule] = useState<Assignment[]>([]);
   const [activeTab, setActiveTab] = useState<'members' | 'schedule'>('schedule');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('sonosched_theme');
+    return (saved as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sonosched_theme', theme);
+  }, [theme]);
   
   const currentMonthServiceDays = useMemo(() => {
     return getServiceDays(currentDate.getMonth(), currentDate.getFullYear());
@@ -142,37 +152,68 @@ export default function App() {
   }, [currentDate]);
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-slate-200 font-sans selection:bg-indigo-500/30">
+    <div className={cn(
+      "min-h-screen font-sans transition-colors duration-300 selection:bg-indigo-500/30",
+      theme === 'dark' ? "bg-[#0B0E14] text-slate-200" : "bg-slate-50 text-slate-900"
+    )}>
       {/* Header */}
-      <header className="bg-[#121720]/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-10">
+      <header className={cn(
+        "backdrop-blur-md border-b sticky top-0 z-10 transition-colors duration-300",
+        theme === 'dark' ? "bg-[#121720]/80 border-white/5" : "bg-white/80 border-slate-200"
+      )}>
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-              <ShieldCheck size={20} />
+              <Volume2 size={20} />
             </div>
-            <h1 className="font-bold text-xl tracking-tight text-white">SonoSched</h1>
+            <h1 className={cn(
+              "font-bold text-xl tracking-tight transition-colors",
+              theme === 'dark' ? "text-white" : "text-slate-900"
+            )}>Escala Sonoplastia</h1>
           </div>
           
-          <nav className="flex gap-1 bg-white/5 p-1 rounded-xl">
-            <button 
-              onClick={() => setActiveTab('schedule')}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
-                activeTab === 'schedule' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                "p-2 rounded-xl border transition-all",
+                theme === 'dark' 
+                  ? "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10" 
+                  : "bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
               )}
+              title={theme === 'dark' ? "Mudar para modo claro" : "Mudar para modo escuro"}
             >
-              Escala
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <button 
-              onClick={() => setActiveTab('members')}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
-                activeTab === 'members' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-              )}
-            >
-              Membros
-            </button>
-          </nav>
+
+            <nav className={cn(
+              "flex gap-1 p-1 rounded-xl transition-colors",
+              theme === 'dark' ? "bg-white/5" : "bg-slate-100"
+            )}>
+              <button 
+                onClick={() => setActiveTab('schedule')}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
+                  activeTab === 'schedule' 
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                    : theme === 'dark' ? "text-slate-400 hover:text-slate-200 hover:bg-white/5" : "text-slate-500 hover:text-slate-700 hover:bg-white"
+                )}
+              >
+                Escala
+              </button>
+              <button 
+                onClick={() => setActiveTab('members')}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
+                  activeTab === 'members' 
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                    : theme === 'dark' ? "text-slate-400 hover:text-slate-200 hover:bg-white/5" : "text-slate-500 hover:text-slate-700 hover:bg-white"
+                )}
+              >
+                Membros
+              </button>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -185,57 +226,80 @@ export default function App() {
             onToggleUnavailableDate={toggleUnavailableDate}
             onRemoveMember={handleRemoveMember}
             onResetToDefault={handleResetToDefault}
+            theme={theme}
           />
         ) : (
           <div className="space-y-6">
             {/* Schedule Controls */}
-            <div className="bg-[#121720] p-6 rounded-2xl shadow-xl border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className={cn(
+              "p-6 rounded-2xl shadow-xl border flex flex-col md:flex-row items-center justify-between gap-6 transition-colors",
+              theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
+            )}>
               <div className="flex items-center gap-6">
                 <button 
                   onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-                  className="p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                  className={cn(
+                    "p-3 rounded-xl transition-all border",
+                    theme === 'dark' 
+                      ? "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5" 
+                      : "bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200"
+                  )}
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <div className="text-center min-w-[180px]">
-                  <h2 className="text-2xl font-bold capitalize text-white tracking-tight">
+                  <h2 className={cn(
+                    "text-2xl font-bold capitalize tracking-tight transition-colors",
+                    theme === 'dark' ? "text-white" : "text-slate-900"
+                  )}>
                     {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
                   </h2>
                 </div>
                 <button 
                   onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-                  className="p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                  className={cn(
+                    "p-3 rounded-xl transition-all border",
+                    theme === 'dark' 
+                      ? "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5" 
+                      : "bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200"
+                  )}
                 >
                   <ChevronRight size={20} />
                 </button>
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-                  <button 
-                    onClick={() => setViewMode('calendar')}
-                    className={cn(
-                      "p-2 rounded-lg transition-all",
-                      viewMode === 'calendar' ? "bg-indigo-500 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
-                    )}
-                  >
-                    <LayoutGrid size={20} />
-                  </button>
+                <div className={cn(
+                  "flex p-1 rounded-xl border transition-colors",
+                  theme === 'dark' ? "bg-white/5 border-white/5" : "bg-slate-100 border-slate-200"
+                )}>
                   <button 
                     onClick={() => setViewMode('list')}
                     className={cn(
                       "p-2 rounded-lg transition-all",
-                      viewMode === 'list' ? "bg-indigo-500 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+                      viewMode === 'list' ? "bg-indigo-500 text-white shadow-lg" : theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
                     )}
                   >
                     <List size={20} />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('calendar')}
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      viewMode === 'calendar' ? "bg-indigo-500 text-white shadow-lg" : theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <LayoutGrid size={20} />
                   </button>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={() => setSchedule([])}
-                    className="px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-300 transition-all uppercase tracking-widest"
+                    className={cn(
+                      "px-4 py-3 text-sm font-bold transition-all uppercase tracking-widest",
+                      theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
+                    )}
                   >
                     Limpar
                   </button>
@@ -253,18 +317,27 @@ export default function App() {
             {viewMode === 'list' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {schedule.length === 0 ? (
-                  <div className="col-span-full bg-[#121720]/50 border-2 border-dashed border-white/5 rounded-3xl p-20 text-center flex flex-col items-center gap-4">
-                    <CalendarIcon size={56} className="text-slate-800" />
+                  <div className={cn(
+                    "col-span-full border-2 border-dashed rounded-3xl p-20 text-center flex flex-col items-center gap-4 transition-colors",
+                    theme === 'dark' ? "bg-[#121720]/50 border-white/5" : "bg-white/50 border-slate-200"
+                  )}>
+                    <CalendarIcon size={56} className={theme === 'dark' ? "text-slate-800" : "text-slate-200"} />
                     <div>
-                      <h3 className="text-xl font-bold text-white">Nenhuma escala gerada</h3>
+                      <h3 className={cn(
+                        "text-xl font-bold transition-colors",
+                        theme === 'dark' ? "text-white" : "text-slate-900"
+                      )}>Nenhuma escala gerada</h3>
                       <p className="text-slate-500 text-sm mt-1 max-w-xs mx-auto">Clique no botão acima para sortear as equipes respeitando as restrições de cada membro.</p>
                     </div>
                   </div>
                 ) : (
                   schedule.map((assignment, idx) => (
-                    <div key={idx} className="bg-[#121720] rounded-2xl shadow-xl border border-white/5 overflow-hidden hover:border-indigo-500/30 transition-all group">
+                    <div key={idx} className={cn(
+                      "rounded-2xl shadow-xl border overflow-hidden transition-all group",
+                      theme === 'dark' ? "bg-[#121720] border-white/5 hover:border-indigo-500/30" : "bg-white border-slate-200 hover:border-indigo-500/30"
+                    )}>
                       <div className={cn(
-                        "p-5 border-b flex justify-between items-center",
+                        "p-5 border-b flex justify-between items-center transition-colors",
                         assignment.hasConflict ? "bg-rose-500/10 border-rose-500/20" :
                         getDay(assignment.date) === 0 ? "bg-indigo-500/10 border-indigo-500/20" : 
                         getDay(assignment.date) === 3 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"
@@ -292,11 +365,17 @@ export default function App() {
                               </div>
                             )}
                           </div>
-                          <h4 className="font-bold text-lg text-white leading-tight">
+                          <h4 className={cn(
+                            "font-bold text-lg leading-tight transition-colors",
+                            theme === 'dark' ? "text-white" : "text-slate-900"
+                          )}>
                             {format(assignment.date, "dd 'de' MMMM", { locale: ptBR })}
                           </h4>
                         </div>
-                        <div className="bg-black/20 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-slate-400 border border-white/5">
+                        <div className={cn(
+                          "px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors",
+                          theme === 'dark' ? "bg-black/20 text-slate-400 border-white/5" : "bg-slate-50 text-slate-500 border-slate-200"
+                        )}>
                           {format(assignment.date, 'HH:mm')}
                         </div>
                       </div>
@@ -305,15 +384,18 @@ export default function App() {
                           <div key={mIdx} className="flex items-center gap-4">
                             <div 
                               className={cn(
-                                "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-inner",
-                                m.type === 'leader' ? "text-white" : "bg-white/5 text-slate-500 border border-white/5"
+                                "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-inner transition-colors",
+                                m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/5 text-slate-500 border border-white/5" : "bg-slate-50 text-slate-400 border-slate-200"
                               )}
                               style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
                             >
                               {m.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{m.name}</p>
+                              <p className={cn(
+                                "text-sm font-bold transition-colors group-hover:text-indigo-400",
+                                theme === 'dark' ? "text-white" : "text-slate-900"
+                              )}>{m.name}</p>
                               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
                                 {m.type === 'leader' ? 'Líder' : 'Auxiliar'}
                               </p>
@@ -326,8 +408,14 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <div className="bg-[#121720] rounded-3xl shadow-2xl border border-white/5 overflow-hidden">
-                <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.02]">
+              <div className={cn(
+                "rounded-3xl shadow-2xl border overflow-hidden transition-colors",
+                theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
+              )}>
+                <div className={cn(
+                  "grid grid-cols-7 border-b transition-colors",
+                  theme === 'dark' ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-slate-50"
+                )}>
                   {WEEK_DAYS.map(day => (
                     <div key={day} className="py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                       {day}
@@ -344,9 +432,10 @@ export default function App() {
                       <div 
                         key={idx} 
                         className={cn(
-                          "p-2 border-r border-b border-white/5 transition-colors relative group",
+                          "p-2 border-r border-b transition-colors relative group",
+                          theme === 'dark' ? "border-white/5" : "border-slate-100",
                           !isCurrentMonth && "opacity-20",
-                          isTodayDay && "bg-indigo-500/5"
+                          isTodayDay && (theme === 'dark' ? "bg-indigo-500/5" : "bg-indigo-50")
                         )}
                       >
                         <span className={cn(
@@ -368,13 +457,16 @@ export default function App() {
                                 <div 
                                   className={cn(
                                     "w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[8px] font-bold",
-                                    m.type === 'leader' ? "text-white" : "bg-white/10 text-slate-400"
+                                    m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/10 text-slate-400" : "bg-slate-200 text-slate-500"
                                   )}
                                   style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
                                 >
                                   {m.name.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-[9px] font-bold text-white truncate">
+                                <span className={cn(
+                                  "text-[9px] font-bold truncate transition-colors",
+                                  theme === 'dark' ? "text-white" : "text-slate-700"
+                                )}>
                                   {m.name.split(' ')[0]}
                                 </span>
                               </div>
@@ -405,11 +497,17 @@ export default function App() {
 
       {/* Footer Info */}
       <footer className="max-w-6xl mx-auto px-4 py-16 text-center">
-        <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-[#121720] rounded-2xl border border-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-600 shadow-xl">
+        <div className={cn(
+          "inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border text-[10px] font-bold uppercase tracking-widest shadow-xl transition-colors",
+          theme === 'dark' ? "bg-[#121720] border-white/5 text-slate-600" : "bg-white border-slate-200 text-slate-400"
+        )}>
           <Clock size={14} className="text-indigo-500" />
           Dias de Culto: Domingo, Quarta e Sábado
         </div>
-        <p className="mt-6 text-slate-700 text-[10px] font-bold uppercase tracking-[0.2em]">Sonoplastia &copy; {new Date().getFullYear()}</p>
+        <p className={cn(
+          "mt-6 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors",
+          theme === 'dark' ? "text-slate-700" : "text-slate-300"
+        )}>Sonoplastia &copy; {new Date().getFullYear()}</p>
       </footer>
     </div>
   );

@@ -1,5 +1,5 @@
 {
-  "name": "SonoSched - Gestão de Equipes de Sonoplastia",
+  "name": "Escala Sonoplastia",
   "description": "Sistema para gerenciamento e sorteio de equipes de sonoplastia, considerando disponibilidades e escalas de outros ministérios.",
   "requestFramePermissions": []
 }
