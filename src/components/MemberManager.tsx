@@ -27,7 +27,7 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
 }) => {
   const diaconosOrder = ['Kalebe', 'Wales', 'Marcos', 'Joabe', 'Claudinei', 'L. Davi', 'Edmilson', 'Victor', 'Weverson', 'L. Fernando'];
   const recepcionistasOrder = ['Letícia', 'Weverson', 'Milena', 'L. Davi', 'Marcos'];
-  const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Rebeca', 'Tamara', 'Carlos'];
+  const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Rebeca', 'Tamara', 'Carlos', 'Yan'];
 
   const diaconos = diaconosOrder
     .map(name => members.find(m => m.name === name && m.roles?.includes('Diácono')))
@@ -41,113 +41,126 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
     .map(name => members.find(m => m.name === name && (!m.roles || m.roles.length === 0)))
     .filter((m): m is Member => !!m);
 
-  const renderMemberCard = (member: Member) => (
-    <div key={member.id} className={cn(
-      "p-6 flex flex-col gap-6 transition-colors",
-      theme === 'dark' ? "hover:bg-white/[0.01]" : "hover:bg-slate-50"
-    )}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div 
-            className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner",
-              member.type === 'leader' ? "text-white" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            )}
-            style={member.type === 'leader' && member.color ? { backgroundColor: member.color } : {}}
-          >
-            {member.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h3 className={cn(
-              "font-bold text-lg tracking-tight transition-colors",
-              theme === 'dark' ? "text-white" : "text-slate-900"
-            )}>{member.name}</h3>
-            <div className="flex gap-2 mt-0.5">
-              <span className={cn(
-                "text-[10px] font-black uppercase tracking-[0.2em]",
-                member.type === 'leader' ? "text-indigo-500" : "text-emerald-500"
-              )}>
-                {member.type === 'leader' ? 'Líder de Equipe' : 'Auxiliar de Som'}
-              </span>
-              {member.roles && member.roles.length > 0 && (
-                <div className="flex gap-1">
-                  {member.roles.map(role => (
-                    <span key={role} className={cn(
-                      "text-[8px] px-1.5 py-0.5 rounded-full border font-bold uppercase tracking-widest transition-colors",
-                      theme === 'dark' ? "bg-white/5 text-slate-500 border-white/5" : "bg-slate-100 text-slate-400 border-slate-200"
-                    )}>
-                      {role}
-                    </span>
-                  ))}
-                </div>
+  const renderMemberCard = (member: Member) => {
+    const isDiacono = member.roles?.includes('Diácono');
+    const isRecepcionista = member.roles?.includes('Recepcionista');
+
+    return (
+      <div key={member.id} className={cn(
+        "p-6 flex flex-col gap-6 transition-colors",
+        theme === 'dark' ? "hover:bg-white/[0.01]" : "hover:bg-slate-50"
+      )}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div 
+              className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner",
+                member.type === 'leader' ? "text-white" : 
+                isDiacono ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                isRecepcionista ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                "bg-slate-500/10 text-slate-400 border border-slate-500/20"
               )}
+              style={member.type === 'leader' && member.color ? { backgroundColor: member.color } : {}}
+            >
+              {member.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h3 className={cn(
+                "font-bold text-lg tracking-tight transition-colors",
+                theme === 'dark' ? "text-white" : "text-slate-900"
+              )}>{member.name}</h3>
+              <div className="flex gap-2 mt-0.5">
+                <span className={cn(
+                  "text-[10px] font-black uppercase tracking-[0.2em]",
+                  member.type === 'leader' ? "text-indigo-500" : 
+                  isDiacono ? "text-amber-400" :
+                  isRecepcionista ? "text-emerald-400" :
+                  "text-slate-500"
+                )}>
+                  {member.type === 'leader' ? 'Líder de Equipe' : 'Auxiliar de Som'}
+                </span>
+                {member.roles && member.roles.length > 0 && (
+                  <div className="flex gap-1">
+                    {member.roles.map(role => (
+                      <span key={role} className={cn(
+                        "text-[8px] px-1.5 py-0.5 rounded-full border font-bold uppercase tracking-widest transition-colors",
+                        role === 'Diácono' ? (theme === 'dark' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-amber-50 text-amber-600 border-amber-200") :
+                        role === 'Recepcionista' ? (theme === 'dark' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-emerald-50 text-emerald-600 border-emerald-200") :
+                        theme === 'dark' ? "bg-white/5 text-slate-500 border-white/5" : "bg-slate-100 text-slate-400 border-slate-200"
+                      )}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+          <button 
+            onClick={() => onRemoveMember(member.id)}
+            className={cn(
+              "p-3 rounded-xl transition-all",
+              theme === 'dark' ? "text-slate-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-slate-300 hover:text-rose-500 hover:bg-rose-50"
+            )}
+            title="Remover Membro"
+          >
+            <Trash2 size={20} />
+          </button>
         </div>
-        <button 
-          onClick={() => onRemoveMember(member.id)}
-          className={cn(
-            "p-3 rounded-xl transition-all",
-            theme === 'dark' ? "text-slate-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-slate-300 hover:text-rose-500 hover:bg-rose-50"
-          )}
-          title="Remover Membro"
-        >
-          <Trash2 size={20} />
-        </button>
-      </div>
 
-      <div className={cn(
-        "p-4 rounded-2xl border transition-colors",
-        theme === 'dark' ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100"
-      )}>
-        <div className="grid grid-cols-3 gap-6">
-          {[0, 3, 6].map((dayOfWeek) => {
-            const days = currentMonthServiceDays.filter(d => getDay(d) === dayOfWeek);
-            if (days.length === 0) return null;
-            
-            return (
-              <div key={dayOfWeek} className="flex flex-col gap-3">
-                <span className={cn(
-                  "text-[9px] font-black uppercase tracking-[0.3em] text-center border-b pb-2 transition-colors",
-                  theme === 'dark' ? "text-slate-500 border-white/5" : "text-slate-400 border-slate-200"
-                )}>
-                  {DAYS_OF_WEEK_LABELS[dayOfWeek as DayOfWeek]}s
-                </span>
-                <div className="flex flex-col gap-2">
-                  {days.map((date, idx) => {
-                    const dateStr = date.toISOString();
-                    const commitment = (member.unavailableDates || []).find(ud => isSameDay(new Date(ud.date), date));
-                    
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => onToggleUnavailableDate(member.id, dateStr)}
-                        className={cn(
-                          "px-3 py-3 rounded-xl text-[11px] font-bold border transition-all flex flex-col items-center gap-1 w-full group relative overflow-hidden",
-                          commitment
-                            ? "bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-lg shadow-rose-500/5"
-                            : theme === 'dark' 
-                              ? "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10"
-                              : "bg-white border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300"
-                        )}
-                      >
-                        <span className="text-xs tracking-tight">{format(date, 'dd/MM')}</span>
-                        {commitment && (
-                          <span className="text-[9px] font-medium opacity-80 truncate w-full text-center px-1">
-                            {commitment.role}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+        <div className={cn(
+          "p-4 rounded-2xl border transition-colors",
+          theme === 'dark' ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100"
+        )}>
+          <div className="grid grid-cols-3 gap-6">
+            {[0, 3, 6].map((dayOfWeek) => {
+              const days = currentMonthServiceDays.filter(d => getDay(d) === dayOfWeek);
+              if (days.length === 0) return null;
+              
+              return (
+                <div key={dayOfWeek} className="flex flex-col gap-3">
+                  <span className={cn(
+                    "text-[9px] font-black uppercase tracking-[0.3em] text-center border-b pb-2 transition-colors",
+                    theme === 'dark' ? "text-slate-500 border-white/5" : "text-slate-400 border-slate-200"
+                  )}>
+                    {DAYS_OF_WEEK_LABELS[dayOfWeek as DayOfWeek]}s
+                  </span>
+                  <div className="flex flex-col gap-2">
+                    {days.map((date, idx) => {
+                      const dateStr = date.toISOString();
+                      const commitment = (member.unavailableDates || []).find(ud => isSameDay(new Date(ud.date), date));
+                      
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => onToggleUnavailableDate(member.id, dateStr)}
+                          className={cn(
+                            "px-3 py-3 rounded-xl text-[11px] font-bold border transition-all flex flex-col items-center gap-1 w-full group relative overflow-hidden",
+                            commitment
+                              ? "bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-lg shadow-rose-500/5"
+                              : theme === 'dark' 
+                                ? "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10"
+                                : "bg-white border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300"
+                          )}
+                        >
+                          <span className="text-xs tracking-tight">{format(date, 'dd/MM')}</span>
+                          {commitment && (
+                            <span className="text-[9px] font-medium opacity-80 truncate w-full text-center px-1">
+                              {commitment.role}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -195,12 +208,12 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
               theme === 'dark' ? "divide-white/5" : "divide-slate-100"
             )}>
               {diaconos.length > 0 && (
-                <div className={theme === 'dark' ? "bg-indigo-500/5" : "bg-indigo-50/30"}>
+                <div className={theme === 'dark' ? "bg-amber-500/5" : "bg-amber-50/30"}>
                   <div className={cn(
                     "px-6 py-3 border-b transition-colors",
                     theme === 'dark' ? "border-white/5" : "border-slate-100"
                   )}>
-                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Diáconos</h3>
+                    <h3 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.3em]">Diáconos</h3>
                   </div>
                   <div className={cn(
                     "divide-y transition-colors",

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { toPng } from 'html-to-image';
 import { 
   Users, 
   Calendar as CalendarIcon, 
@@ -12,7 +13,11 @@ import {
   LayoutGrid,
   List,
   Sun,
-  Moon
+  Moon,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { 
   format, 
@@ -32,22 +37,23 @@ import { ptBR } from 'date-fns/locale';
 import { Member, Team, Assignment, DayOfWeek, MemberType } from './types';
 import { generateSchedule, getServiceDays } from './utils/scheduler';
 import { MemberManager } from './components/MemberManager';
+import { MemberList } from './components/MemberList';
 import { cn } from './utils/cn';
 import { DAYS_OF_WEEK_LABELS, WEEK_DAYS } from './constants';
 
 export default function App() {
   const [members, setMembers] = useState<Member[]>(() => {
-    const saved = localStorage.getItem('sonosched_members_v8');
+    const saved = localStorage.getItem('sonosched_members_v9');
     if (saved) return JSON.parse(saved);
     
     // Default sample members
     return [
       { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1', roles: [] },
-      { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981', roles: ['Diácono'] },
+      { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
       { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono', 'Recepcionista'] },
       { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
-      { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6', roles: ['Diácono'] },
-      { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4', roles: ['Diácono'] },
+      { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
+      { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
       { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
       { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
       { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
@@ -58,13 +64,17 @@ export default function App() {
       { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
       { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
       { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
+      { id: '17', name: 'Yan', type: 'participant', unavailableDays: [], roles: [] },
     ];
   });
   
   const [currentDate, setCurrentDate] = useState(addMonths(new Date(), 1));
   const [schedule, setSchedule] = useState<Assignment[]>([]);
-  const [activeTab, setActiveTab] = useState<'members' | 'schedule'>('schedule');
+  const [activeTab, setActiveTab] = useState<'members' | 'schedule' | 'all_members'>('schedule');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [skippedDates, setSkippedDates] = useState<string[]>([]);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const scheduleRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('sonosched_theme');
     return (saved as 'dark' | 'light') || 'dark';
@@ -79,18 +89,18 @@ export default function App() {
   }, [currentDate]);
 
   useEffect(() => {
-    localStorage.setItem('sonosched_members_v8', JSON.stringify(members));
+    localStorage.setItem('sonosched_members_v9', JSON.stringify(members));
   }, [members]);
 
   const handleResetToDefault = () => {
     if (window.confirm('Deseja resetar a lista de membros para o padrão? Isso apagará todos os membros atuais.')) {
       const defaultMembers: Member[] = [
         { id: '1', name: 'Carlos', type: 'leader', unavailableDays: [], color: '#6366f1', roles: [] },
-        { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#10b981', roles: ['Diácono'] },
+        { id: '2', name: 'Claudinei', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
         { id: '3', name: 'Marcos', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono', 'Recepcionista'] },
         { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
-        { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#8b5cf6', roles: ['Diácono'] },
-        { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#06b6d4', roles: ['Diácono'] },
+        { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
+        { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
         { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
         { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
         { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
@@ -101,10 +111,11 @@ export default function App() {
         { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
         { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
         { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
+        { id: '17', name: 'Yan', type: 'participant', unavailableDays: [], roles: [] },
       ];
       setMembers(defaultMembers);
       setSchedule([]);
-      localStorage.removeItem('sonosched_members_v8');
+      localStorage.removeItem('sonosched_members_v9');
     }
   };
 
@@ -120,12 +131,20 @@ export default function App() {
         if (exists) {
           return { ...m, unavailableDates: dates.filter(d => d.date !== date) };
         } else {
-          const role = prompt('Qual o compromisso? (Ex: Diaconato, Recepção)') || 'Ocupado';
+          // Se o membro tiver um cargo, usa o primeiro como motivo, senão usa 'Ocupado'
+          const role = m.roles && m.roles.length > 0 ? m.roles[0] : 'Ocupado';
           return { ...m, unavailableDates: [...dates, { date, role }] };
         }
       }
       return m;
     }));
+  };
+
+  const getServiceTimeRange = (date: Date) => {
+    const dow = getDay(date);
+    if (dow === 6) return '08:40 as 12:00';
+    if (dow === 0 || dow === 3) return '19:40 as 21:00';
+    return format(date, 'HH:mm');
   };
 
   const handleGenerate = () => {
@@ -140,9 +159,93 @@ export default function App() {
     const newSchedule = generateSchedule(
       currentDate.getMonth(),
       currentDate.getFullYear(),
-      members
+      members,
+      skippedDates
     );
     setSchedule(newSchedule);
+  };
+
+  const toggleSkippedDate = (dateIso: string) => {
+    setSkippedDates(prev => 
+      prev.includes(dateIso) 
+        ? prev.filter(d => d !== dateIso) 
+        : [...prev, dateIso]
+    );
+  };
+
+  const handleExportText = () => {
+    if (schedule.length === 0) return;
+
+    const monthName = format(currentDate, 'MMMM yyyy', { locale: ptBR });
+    let text = `ESCALA SONOPLASTIA - ${monthName.toUpperCase()}\n\n`;
+
+    schedule.forEach(assignment => {
+      const dateStr = format(assignment.date, "dd/MM (EEEE)", { locale: ptBR });
+      const timeRange = getServiceTimeRange(assignment.date);
+      const leader = assignment.team.members.find(m => m.type === 'leader');
+      const participant = assignment.team.members.find(m => m.type === 'participant');
+      
+      text += `${dateStr} - ${timeRange}\n`;
+      text += `Líder: ${leader?.name || '---'}\n`;
+      if (participant) {
+        text += `Auxiliar: ${participant.name}\n`;
+      }
+      if (assignment.hasConflict) {
+        text += `* OBS: ${assignment.conflictReason}\n`;
+      }
+      text += `\n`;
+    });
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `escala-sonoplastia-${format(currentDate, 'yyyy-MM')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowExportModal(false);
+  };
+
+  const handleExportImage = async () => {
+    if (!scheduleRef.current) return;
+
+    try {
+      const node = scheduleRef.current;
+      
+      // Add a small buffer to avoid clipping edges
+      const width = node.scrollWidth + 60;
+      const height = node.scrollHeight + 60;
+
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        backgroundColor: theme === 'dark' ? '#0a0e14' : '#f8fafc',
+        width: width,
+        height: height,
+        pixelRatio: 2,
+        style: {
+          overflow: 'visible',
+          width: `${node.scrollWidth}px`,
+          height: `${node.scrollHeight}px`,
+          maxWidth: 'none',
+          maxHeight: 'none',
+          margin: '0',
+          padding: '30px',
+          borderRadius: '0',
+          transform: 'none'
+        }
+      });
+      
+      const link = document.createElement('a');
+      link.download = `escala-sonoplastia-${format(currentDate, 'yyyy-MM')}.png`;
+      link.href = dataUrl;
+      link.click();
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Erro ao exportar imagem:', err);
+      alert('Erro ao gerar imagem da escala.');
+    }
   };
 
   const calendarDays = useMemo(() => {
@@ -210,6 +313,17 @@ export default function App() {
                     : theme === 'dark' ? "text-slate-400 hover:text-slate-200 hover:bg-white/5" : "text-slate-500 hover:text-slate-700 hover:bg-white"
                 )}
               >
+                Disponibilidades
+              </button>
+              <button 
+                onClick={() => setActiveTab('all_members')}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
+                  activeTab === 'all_members' 
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                    : theme === 'dark' ? "text-slate-400 hover:text-slate-200 hover:bg-white/5" : "text-slate-500 hover:text-slate-700 hover:bg-white"
+                )}
+              >
                 Membros
               </button>
             </nav>
@@ -228,6 +342,11 @@ export default function App() {
             onResetToDefault={handleResetToDefault}
             theme={theme}
           />
+        ) : activeTab === 'all_members' ? (
+          <MemberList 
+            members={members}
+            theme={theme}
+          />
         ) : (
           <div className="space-y-6">
             {/* Schedule Controls */}
@@ -237,7 +356,10 @@ export default function App() {
             )}>
               <div className="flex items-center gap-6">
                 <button 
-                  onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                  onClick={() => {
+                    setCurrentDate(subMonths(currentDate, 1));
+                    setSkippedDates([]);
+                  }}
                   className={cn(
                     "p-3 rounded-xl transition-all border",
                     theme === 'dark' 
@@ -256,7 +378,10 @@ export default function App() {
                   </h2>
                 </div>
                 <button 
-                  onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                  onClick={() => {
+                    setCurrentDate(addMonths(currentDate, 1));
+                    setSkippedDates([]);
+                  }}
                   className={cn(
                     "p-3 rounded-xl transition-all border",
                     theme === 'dark' 
@@ -294,8 +419,25 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {schedule.length > 0 && (
+                    <button 
+                      onClick={() => setShowExportModal(true)}
+                      className={cn(
+                        "p-3.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-sm",
+                        theme === 'dark' 
+                          ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5" 
+                          : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                      )}
+                    >
+                      <Download size={18} />
+                      Exportar
+                    </button>
+                  )}
                   <button 
-                    onClick={() => setSchedule([])}
+                    onClick={() => {
+                      setSchedule([]);
+                      setSkippedDates([]);
+                    }}
                     className={cn(
                       "px-4 py-3 text-sm font-bold transition-all uppercase tracking-widest",
                       theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
@@ -314,8 +456,76 @@ export default function App() {
               </div>
             </div>
 
+            {/* Ignored Days Selection */}
+            <div className={cn(
+              "p-6 rounded-2xl border transition-colors",
+              theme === 'dark' ? "bg-[#121720]/50 border-white/5" : "bg-white/50 border-slate-200"
+            )}>
+              <div className="flex items-center gap-2 mb-6">
+                <AlertCircle size={16} className="text-indigo-500" />
+                <h3 className={cn(
+                  "text-sm font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-slate-400" : "text-slate-600"
+                )}>Dias para ignorar no sorteio</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                {[0, 3, 6]
+                  .sort((a, b) => {
+                    const firstA = currentMonthServiceDays.find(d => getDay(d) === a);
+                    const firstB = currentMonthServiceDays.find(d => getDay(d) === b);
+                    if (!firstA) return 1;
+                    if (!firstB) return -1;
+                    return firstA.getTime() - firstB.getTime();
+                  })
+                  .map((dayOfWeek) => {
+                    const days = currentMonthServiceDays.filter(d => getDay(d) === dayOfWeek);
+                    return (
+                    <div key={dayOfWeek} className="space-y-4">
+                      <div className={cn(
+                        "text-[10px] font-black uppercase tracking-[0.2em] pb-3 border-b text-center",
+                        theme === 'dark' ? "text-slate-500 border-white/5" : "text-slate-400 border-slate-100"
+                      )}>
+                        {DAYS_OF_WEEK_LABELS[dayOfWeek as DayOfWeek]}s
+                      </div>
+                      <div className="flex flex-col gap-2.5">
+                        {days.map((day, idx) => {
+                          const dateIso = day.toISOString();
+                          const isSkipped = skippedDates.includes(dateIso);
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => toggleSkippedDate(dateIso)}
+                              className={cn(
+                                "px-4 py-3.5 rounded-2xl text-[11px] font-bold border transition-all flex items-center justify-between group",
+                                isSkipped 
+                                  ? "bg-rose-500/10 border-rose-500/30 text-rose-500 shadow-lg shadow-rose-500/5" 
+                                  : theme === 'dark' 
+                                    ? "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10" 
+                                    : "bg-white border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                              )}
+                            >
+                              <span className="tracking-tight">{format(day, "dd 'de' MMMM", { locale: ptBR })}</span>
+                              <div className={cn(
+                                "w-5 h-5 rounded-lg border flex items-center justify-center transition-all",
+                                isSkipped 
+                                  ? "bg-rose-500 border-rose-500 text-white scale-110 shadow-lg shadow-rose-500/20" 
+                                  : "border-slate-400 group-hover:border-indigo-500"
+                              )}>
+                                {isSkipped && <span className="text-[10px] font-black">X</span>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {viewMode === 'list' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div ref={scheduleRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {schedule.length === 0 ? (
                   <div className={cn(
                     "col-span-full border-2 border-dashed rounded-3xl p-20 text-center flex flex-col items-center gap-4 transition-colors",
@@ -376,7 +586,7 @@ export default function App() {
                           "px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors",
                           theme === 'dark' ? "bg-black/20 text-slate-400 border-white/5" : "bg-slate-50 text-slate-500 border-slate-200"
                         )}>
-                          {format(assignment.date, 'HH:mm')}
+                          {getServiceTimeRange(assignment.date)}
                         </div>
                       </div>
                       <div className="p-5 space-y-4">
@@ -402,13 +612,20 @@ export default function App() {
                             </div>
                           </div>
                         ))}
+                        <div className={cn(
+                          "pt-4 border-t flex items-center gap-2 text-[10px] font-black uppercase tracking-widest",
+                          theme === 'dark' ? "border-white/5 text-slate-600" : "border-slate-100 text-slate-400"
+                        )}>
+                          <Clock size={12} className="text-indigo-500" />
+                          {getServiceTimeRange(assignment.date)}
+                        </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
             ) : (
-              <div className={cn(
+              <div ref={scheduleRef} className={cn(
                 "rounded-3xl shadow-2xl border overflow-hidden transition-colors",
                 theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
               )}>
@@ -471,6 +688,9 @@ export default function App() {
                                 </span>
                               </div>
                             ))}
+                            <div className="text-[7px] font-black text-slate-500 mt-1 uppercase tracking-tighter">
+                              {getServiceTimeRange(assignment.date)}
+                            </div>
                             {assignment.hasConflict && (
                               <div className="flex flex-col gap-0.5 mt-1">
                                 <div className="text-[7px] font-black text-rose-400 flex items-center gap-0.5">
@@ -509,6 +729,76 @@ export default function App() {
           theme === 'dark' ? "text-slate-700" : "text-slate-300"
         )}>Sonoplastia &copy; {new Date().getFullYear()}</p>
       </footer>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={cn(
+            "w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border animate-in zoom-in-95 duration-200",
+            theme === 'dark' ? "bg-[#0a0e14] border-white/10" : "bg-white border-slate-200"
+          )}>
+            <div className="flex items-center justify-between mb-8">
+              <h3 className={cn(
+                "text-2xl font-bold tracking-tight",
+                theme === 'dark' ? "text-white" : "text-slate-900"
+              )}>Exportar Escala</h3>
+              <button 
+                onClick={() => setShowExportModal(false)}
+                className={cn(
+                  "p-2 rounded-xl transition-colors",
+                  theme === 'dark' ? "hover:bg-white/10 text-slate-400" : "hover:bg-slate-100 text-slate-500"
+                )}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <button 
+                onClick={handleExportText}
+                className={cn(
+                  "flex items-center gap-4 p-6 rounded-3xl border transition-all text-left group",
+                  theme === 'dark' 
+                    ? "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20" 
+                    : "bg-slate-50 border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5"
+                )}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <p className={cn(
+                    "font-bold text-lg",
+                    theme === 'dark' ? "text-white" : "text-slate-900"
+                  )}>Arquivo de Texto (.txt)</p>
+                  <p className="text-slate-500 text-sm">Ideal para copiar e colar no WhatsApp.</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={handleExportImage}
+                className={cn(
+                  "flex items-center gap-4 p-6 rounded-3xl border transition-all text-left group",
+                  theme === 'dark' 
+                    ? "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20" 
+                    : "bg-slate-50 border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5"
+                )}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                  <ImageIcon size={24} />
+                </div>
+                <div>
+                  <p className={cn(
+                    "font-bold text-lg",
+                    theme === 'dark' ? "text-white" : "text-slate-900"
+                  )}>Imagem (.png)</p>
+                  <p className="text-slate-500 text-sm">Gera uma foto da escala como aparece no site.</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

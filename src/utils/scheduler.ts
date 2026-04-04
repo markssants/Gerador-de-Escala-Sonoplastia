@@ -17,98 +17,113 @@ export function getServiceDays(month: number, year: number): Date[] {
   // 0 = Sunday, 3 = Wednesday, 6 = Saturday
   return allDays.filter(day => {
     const dow = getDay(day);
-    return dow === 0 || dow === 3 || dow === 6;
+    if (dow === 0 || dow === 3) {
+      day.setHours(19, 40, 0, 0);
+      return true;
+    }
+    if (dow === 6) {
+      day.setHours(8, 40, 0, 0);
+      return true;
+    }
+    return false;
   });
 }
 
 export function generateSchedule(
   month: number, 
   year: number, 
-  members: Member[]
+  members: Member[],
+  skippedDates: string[] = []
 ): Assignment[] {
-  const serviceDays = getServiceDays(month, year);
+  const allServiceDays = getServiceDays(month, year);
+  const serviceDays = allServiceDays.filter(day => !skippedDates.includes(day.toISOString()));
   const assignments: Assignment[] = [];
   
-  const leaders = members.filter(m => m.type === 'leader').sort(() => Math.random() - 0.5);
-  const participants = members.filter(m => m.type === 'participant').sort(() => Math.random() - 0.5);
+  const leaders = members.filter(m => m.type === 'leader');
+  const participants = members.filter(m => m.type === 'participant');
 
   if (leaders.length === 0) return [];
 
-  // Queues for rotation to ensure everyone is used before repeating
-  let leaderQueue = [...leaders];
-  let participantQueue = [...participants];
+  // Track assignment counts for this specific generation
+  const counts = new Map<string, number>();
+  members.forEach(m => counts.set(m.id, 0));
 
   serviceDays.forEach((day, index) => {
     const dayOfWeek = getDay(day) as DayOfWeek;
     
-    // 1. Pick Leader
-    let selectedLeader: Member | null = null;
-    for (let i = 0; i < leaderQueue.length; i++) {
-      const candidate = leaderQueue[i];
-      const hasRecurringConflict = candidate.unavailableDays.some(ud => ud.dayOfWeek === dayOfWeek);
-      const hasSpecificConflict = candidate.unavailableDates?.some(ud => isSameDay(new Date(ud.date), day));
-      
-      if (!hasRecurringConflict && !hasSpecificConflict) {
-        selectedLeader = candidate;
-        leaderQueue.splice(i, 1);
-        leaderQueue.push(selectedLeader);
-        break;
-      }
-    }
-    // Fallback if everyone has conflict
-    if (!selectedLeader) {
-      selectedLeader = leaderQueue.shift()!;
-      leaderQueue.push(selectedLeader);
-    }
+    const pickMember = (pool: Member[], categoryLabel: string) => {
+      // 1. Filter by conflict (recurring or specific date)
+      const available = pool.filter(m => {
+        const hasRecurring = m.unavailableDays.some(ud => ud.dayOfWeek === dayOfWeek);
+        const hasSpecific = m.unavailableDates?.some(ud => isSameDay(new Date(ud.date), day));
+        return !hasRecurring && !hasSpecific;
+      });
 
-    // 2. Pick Participant (1 per day)
-    let selectedParticipant: Member | null = null;
-    let participantConflict = false;
+      let selected: Member;
+      let hasConflict = false;
+      let conflictReason = '';
 
-    if (participants.length > 0) {
-      for (let i = 0; i < participantQueue.length; i++) {
-        const candidate = participantQueue[i];
-        const recurringConflict = candidate.unavailableDays.some(ud => ud.dayOfWeek === dayOfWeek);
-        const specificConflict = candidate.unavailableDates?.some(ud => isSameDay(new Date(ud.date), day));
+      if (available.length === 0) {
+        // Fallback: everyone has conflict, pick the one with lowest count from full pool
+        const sortedPool = [...pool].sort((a, b) => {
+          const countA = counts.get(a.id) || 0;
+          const countB = counts.get(b.id) || 0;
+          if (countA !== countB) return countA - countB;
+          return Math.random() - 0.5;
+        });
+        selected = sortedPool[0];
+        hasConflict = true;
         
-        if (!recurringConflict && !specificConflict) {
-          selectedParticipant = candidate;
-          participantQueue.splice(i, 1);
-          participantQueue.push(selectedParticipant);
-          break;
-        }
-      }
-      // Fallback if everyone has conflict
-      if (!selectedParticipant) {
-        selectedParticipant = participantQueue.shift()!;
-        participantQueue.push(selectedParticipant);
-        participantConflict = true;
-      }
-    }
+        // Identify conflict reason for the UI
+        const rec = selected.unavailableDays.find(ud => ud.dayOfWeek === dayOfWeek);
+        const spec = selected.unavailableDates?.find(ud => isSameDay(new Date(ud.date), day));
+        conflictReason = rec ? rec.role : (spec ? spec.role : 'Ocupado');
+      } else {
+        // 2. Preference: Try to find those who haven't worked on THIS day of week yet (e.g. avoid same person every Sunday)
+        const notWorkedOnThisDayOfWeek = available.filter(m => {
+          return !assignments.some(a => 
+            a.team.members.some(tm => tm.id === m.id) && 
+            getDay(a.date) === dayOfWeek
+          );
+        });
 
-    // Check if leader also had conflict for the final flag
-    const leaderRecurringConflict = selectedLeader.unavailableDays.find(ud => ud.dayOfWeek === dayOfWeek);
-    const leaderSpecificConflict = selectedLeader.unavailableDates?.find(ud => isSameDay(new Date(ud.date), day));
-    const leaderConflict = !!(leaderRecurringConflict || leaderSpecificConflict);
-    
-    let conflictReason = '';
-    if (leaderRecurringConflict) conflictReason = `Líder: ${leaderRecurringConflict.role}`;
-    if (leaderSpecificConflict) conflictReason = `Líder: ${leaderSpecificConflict.role}`;
-    if (participantConflict) {
-      const pRecurring = selectedParticipant?.unavailableDays.find(ud => ud.dayOfWeek === dayOfWeek);
-      const pSpecific = selectedParticipant?.unavailableDates?.find(ud => isSameDay(new Date(ud.date), day));
-      if (pRecurring) conflictReason = conflictReason ? `${conflictReason}, Auxiliar: ${pRecurring.role}` : `Auxiliar: ${pRecurring.role}`;
-      if (pSpecific) conflictReason = conflictReason ? `${conflictReason}, Auxiliar: ${pSpecific.role}` : `Auxiliar: ${pSpecific.role}`;
+        const candidates = notWorkedOnThisDayOfWeek.length > 0 ? notWorkedOnThisDayOfWeek : available;
+
+        // 3. Strict Rotation: Pick the one with the lowest total assignment count so far this month
+        // This ensures "everyone participates before anyone repeats"
+        const sortedCandidates = [...candidates].sort((a, b) => {
+          const countA = counts.get(a.id) || 0;
+          const countB = counts.get(b.id) || 0;
+          if (countA !== countB) return countA - countB;
+          // Randomize among those with same count to keep scale fresh
+          return Math.random() - 0.5;
+        });
+        
+        selected = sortedCandidates[0];
+      }
+
+      counts.set(selected.id, (counts.get(selected.id) || 0) + 1);
+      return { member: selected, hasConflict, conflictReason };
+    };
+
+    const leaderResult = pickMember(leaders, 'Líder');
+    const participantResult = participants.length > 0 ? pickMember(participants, 'Auxiliar') : null;
+
+    let finalConflictReason = '';
+    if (leaderResult.hasConflict) finalConflictReason = `Líder: ${leaderResult.conflictReason}`;
+    if (participantResult?.hasConflict) {
+      const pReason = `Auxiliar: ${participantResult.conflictReason}`;
+      finalConflictReason = finalConflictReason ? `${finalConflictReason}, ${pReason}` : pReason;
     }
 
     assignments.push({
       date: day,
       team: {
         id: `gen-${index}`,
-        members: selectedParticipant ? [selectedLeader, selectedParticipant] : [selectedLeader]
+        members: participantResult ? [leaderResult.member, participantResult.member] : [leaderResult.member]
       },
-      hasConflict: participantConflict || leaderConflict,
-      conflictReason: conflictReason || undefined
+      hasConflict: leaderResult.hasConflict || (participantResult?.hasConflict ?? false),
+      conflictReason: finalConflictReason || undefined
     });
   });
 
