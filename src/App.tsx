@@ -272,7 +272,7 @@ export default function App() {
             <h1 className={cn(
               "font-bold text-xl tracking-tight transition-colors",
               theme === 'dark' ? "text-white" : "text-slate-900"
-            )}>Escala Sonoplastia</h1>
+            )}>Sonoplastia</h1>
           </div>
           
           <div className="flex items-center gap-4">
