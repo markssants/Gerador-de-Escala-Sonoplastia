@@ -27,7 +27,7 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
 }) => {
   const diaconosOrder = ['Kalebe', 'Wales', 'Marcos', 'Joabe', 'Claudinei', 'L. Davi', 'Edmilson', 'Victor', 'Weverson', 'L. Fernando'];
   const recepcionistasOrder = ['Letícia', 'Weverson', 'Milena', 'L. Davi', 'Marcos'];
-  const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Tamara', 'Carlos', 'Yan'];
+  const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Arthur', 'Tamara', 'Carlos', 'Yan'];
 
   const diaconos = diaconosOrder
     .map(name => members.find(m => m.name === name && m.roles?.includes('Diácono')))
