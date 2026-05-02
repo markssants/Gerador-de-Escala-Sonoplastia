@@ -44,7 +44,11 @@ import { DAYS_OF_WEEK_LABELS, WEEK_DAYS } from './constants';
 export default function App() {
   const [members, setMembers] = useState<Member[]>(() => {
     const saved = localStorage.getItem('sonosched_members_v9');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const loadedMembers = JSON.parse(saved);
+      // Ensure Rebeca is removed even if she exists in local storage
+      return loadedMembers.filter((m: Member) => m.name !== 'Rebeca');
+    }
     
     // Default sample members
     return [
@@ -54,7 +58,6 @@ export default function App() {
       { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
       { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
       { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
-      { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
       { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
       { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
       { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
@@ -101,7 +104,6 @@ export default function App() {
         { id: '4', name: 'Tamara', type: 'leader', unavailableDays: [], color: '#f43f5e', roles: [] },
         { id: '5', name: 'Victor', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
         { id: '6', name: 'Wales', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
-        { id: '7', name: 'Rebeca', type: 'participant', unavailableDays: [], roles: [] },
         { id: '8', name: 'Joabe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
         { id: '9', name: 'Milena', type: 'participant', unavailableDays: [], roles: ['Recepcionista'] },
         { id: '10', name: 'Weverson', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
