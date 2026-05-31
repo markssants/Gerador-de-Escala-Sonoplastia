@@ -189,11 +189,10 @@ export default function App() {
 
     schedule.forEach(assignment => {
       const dateStr = format(assignment.date, "dd/MM (EEEE)", { locale: ptBR });
-      const timeRange = getServiceTimeRange(assignment.date);
       const leader = assignment.team.members.find(m => m.type === 'leader');
       const participant = assignment.team.members.find(m => m.type === 'participant');
       
-      text += `${dateStr} - ${timeRange}\n`;
+      text += `${dateStr}\n`;
       text += `Líder: ${leader?.name || '---'}\n`;
       if (participant) {
         text += `Auxiliar: ${participant.name}\n`;
