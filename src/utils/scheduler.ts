@@ -51,8 +51,76 @@ export function generateSchedule(
   serviceDays.forEach((day, index) => {
     const dayOfWeek = getDay(day) as DayOfWeek;
     
-    const pickMember = (pool: Member[], categoryLabel: string) => {
-      // 1. Filter by conflict (recurring or specific date)
+    const getLeaderTier = (m: Member): number => {
+      const isEdmilson = m.name === 'Edmilson' || m.name === 'Edimilson';
+      const count = counts.get(m.id) || 0;
+      if (!isEdmilson) {
+        // Priority for main leaders: 2 times per month each
+        if (count < 2) return 1;
+        return 4; // Main leaders if already >= 2 times
+      } else {
+        // Minor leader (Edmilson): 1 time per month, and 2 times when possible
+        if (count < 1) return 2;
+        if (count < 2) return 3;
+        return 5; // Edmilson if already >= 2 times
+      }
+    };
+
+    const pickLeader = () => {
+      const available = leaders.filter(m => {
+        const hasRecurring = m.unavailableDays.some(ud => ud.dayOfWeek === dayOfWeek);
+        const hasSpecific = m.unavailableDates?.some(ud => isSameDay(new Date(ud.date), day));
+        return !hasRecurring && !hasSpecific;
+      });
+
+      let selected: Member;
+      let hasConflict = false;
+      let conflictReason = '';
+
+      if (available.length === 0) {
+        const sortedPool = [...leaders].sort((a, b) => {
+          const tierA = getLeaderTier(a);
+          const tierB = getLeaderTier(b);
+          if (tierA !== tierB) return tierA - tierB;
+          const countA = counts.get(a.id) || 0;
+          const countB = counts.get(b.id) || 0;
+          if (countA !== countB) return countA - countB;
+          return Math.random() - 0.5;
+        });
+        selected = sortedPool[0];
+        hasConflict = true;
+        
+        const rec = selected.unavailableDays.find(ud => ud.dayOfWeek === dayOfWeek);
+        const spec = selected.unavailableDates?.find(ud => isSameDay(new Date(ud.date), day));
+        conflictReason = rec ? rec.role : (spec ? spec.role : 'Ocupado');
+      } else {
+        const minTier = Math.min(...available.map(getLeaderTier));
+        const tierAvailable = available.filter(m => getLeaderTier(m) === minTier);
+
+        const notWorkedOnThisDayOfWeek = tierAvailable.filter(m => {
+          return !assignments.some(a => 
+            a.team.members.some(tm => tm.id === m.id) && 
+            getDay(a.date) === dayOfWeek
+          );
+        });
+
+        const candidates = notWorkedOnThisDayOfWeek.length > 0 ? notWorkedOnThisDayOfWeek : tierAvailable;
+
+        const sortedCandidates = [...candidates].sort((a, b) => {
+          const countA = counts.get(a.id) || 0;
+          const countB = counts.get(b.id) || 0;
+          if (countA !== countB) return countA - countB;
+          return Math.random() - 0.5;
+        });
+        
+        selected = sortedCandidates[0];
+      }
+
+      counts.set(selected.id, (counts.get(selected.id) || 0) + 1);
+      return { member: selected, hasConflict, conflictReason };
+    };
+
+    const pickParticipant = (pool: Member[]) => {
       const available = pool.filter(m => {
         const hasRecurring = m.unavailableDays.some(ud => ud.dayOfWeek === dayOfWeek);
         const hasSpecific = m.unavailableDates?.some(ud => isSameDay(new Date(ud.date), day));
@@ -64,7 +132,6 @@ export function generateSchedule(
       let conflictReason = '';
 
       if (available.length === 0) {
-        // Fallback: everyone has conflict, pick the one with lowest count from full pool
         const sortedPool = [...pool].sort((a, b) => {
           const countA = counts.get(a.id) || 0;
           const countB = counts.get(b.id) || 0;
@@ -74,12 +141,10 @@ export function generateSchedule(
         selected = sortedPool[0];
         hasConflict = true;
         
-        // Identify conflict reason for the UI
         const rec = selected.unavailableDays.find(ud => ud.dayOfWeek === dayOfWeek);
         const spec = selected.unavailableDates?.find(ud => isSameDay(new Date(ud.date), day));
         conflictReason = rec ? rec.role : (spec ? spec.role : 'Ocupado');
       } else {
-        // 2. Preference: Try to find those who haven't worked on THIS day of week yet (e.g. avoid same person every Sunday)
         const notWorkedOnThisDayOfWeek = available.filter(m => {
           return !assignments.some(a => 
             a.team.members.some(tm => tm.id === m.id) && 
@@ -89,13 +154,10 @@ export function generateSchedule(
 
         const candidates = notWorkedOnThisDayOfWeek.length > 0 ? notWorkedOnThisDayOfWeek : available;
 
-        // 3. Strict Rotation: Pick the one with the lowest total assignment count so far this month
-        // This ensures "everyone participates before anyone repeats"
         const sortedCandidates = [...candidates].sort((a, b) => {
           const countA = counts.get(a.id) || 0;
           const countB = counts.get(b.id) || 0;
           if (countA !== countB) return countA - countB;
-          // Randomize among those with same count to keep scale fresh
           return Math.random() - 0.5;
         });
         
@@ -106,7 +168,7 @@ export function generateSchedule(
       return { member: selected, hasConflict, conflictReason };
     };
 
-    const leaderResult = pickMember(leaders, 'Líder');
+    const leaderResult = pickLeader();
 
     // Rule: Wales and Arthur always together
     // Wales is a leader, Arthur is a participant.
@@ -125,7 +187,7 @@ export function generateSchedule(
       }
     }
 
-    const participantResult = participantPool.length > 0 ? pickMember(participantPool, 'Auxiliar') : null;
+    const participantResult = participantPool.length > 0 ? pickParticipant(participantPool) : null;
 
     let finalConflictReason = '';
     if (leaderResult.hasConflict) finalConflictReason = `Líder: ${leaderResult.conflictReason}`;

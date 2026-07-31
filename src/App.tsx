@@ -51,7 +51,12 @@ export default function App() {
       if (!cleanMembers.find((m: Member) => m.name === 'Arthur')) {
         cleanMembers.push({ id: '7', name: 'Arthur', type: 'participant', unavailableDays: [], roles: [] });
       }
-      return cleanMembers;
+      return cleanMembers.map((m: Member) => {
+        if (m.name === 'Edmilson' || m.name === 'Edimilson') {
+          return { ...m, type: 'leader', color: m.color || '#f59e0b' };
+        }
+        return m;
+      });
     }
     
     // Default sample members
@@ -70,7 +75,7 @@ export default function App() {
       { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
       { id: '13', name: 'L. Fernando', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
       { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
-      { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+      { id: '15', name: 'Edmilson', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
       { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
       { id: '17', name: 'Yan', type: 'participant', unavailableDays: [], roles: [] },
     ];
@@ -117,7 +122,7 @@ export default function App() {
         { id: '12', name: 'Kalebe', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
         { id: '13', name: 'L. Fernando', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
         { id: '14', name: 'Kauan', type: 'participant', unavailableDays: [], roles: [] },
-        { id: '15', name: 'Edmilson', type: 'participant', unavailableDays: [], roles: ['Diácono'] },
+        { id: '15', name: 'Edmilson', type: 'leader', unavailableDays: [], color: '#f59e0b', roles: ['Diácono'] },
         { id: '16', name: 'L. Davi', type: 'participant', unavailableDays: [], roles: ['Diácono', 'Recepcionista'] },
         { id: '17', name: 'Yan', type: 'participant', unavailableDays: [], roles: [] },
       ];
