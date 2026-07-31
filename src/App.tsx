@@ -101,6 +101,34 @@ export default function App() {
     return getServiceDays(currentDate.getMonth(), currentDate.getFullYear());
   }, [currentDate]);
 
+  const memberAppearanceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    schedule.forEach(assignment => {
+      assignment.team.members.forEach(m => {
+        counts.set(m.id, (counts.get(m.id) || 0) + 1);
+      });
+    });
+    return counts;
+  }, [schedule]);
+
+  const scheduledMembersSummary = useMemo(() => {
+    const map = new Map<string, { member: Member; count: number }>();
+    schedule.forEach(assignment => {
+      assignment.team.members.forEach(m => {
+        const existing = map.get(m.id);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(m.id, { member: m, count: 1 });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.member.name.localeCompare(b.member.name);
+    });
+  }, [schedule]);
+
   useEffect(() => {
     localStorage.setItem('sonosched_members_v9', JSON.stringify(members));
   }, [members]);
@@ -602,28 +630,44 @@ export default function App() {
                         </div>
                       </div>
                       <div className="p-5 space-y-4">
-                        {assignment.team.members.map((m, mIdx) => (
-                          <div key={mIdx} className="flex items-center gap-4">
-                            <div 
-                              className={cn(
-                                "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-inner transition-colors",
-                                m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/5 text-slate-500 border border-white/5" : "bg-slate-50 text-slate-400 border-slate-200"
-                              )}
-                              style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
-                            >
-                              {m.name.charAt(0).toUpperCase()}
+                        {assignment.team.members.map((m, mIdx) => {
+                          const count = memberAppearanceCounts.get(m.id) || 0;
+                          return (
+                            <div key={mIdx} className="flex items-center gap-4">
+                              <div 
+                                className={cn(
+                                  "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-inner transition-colors",
+                                  m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/5 text-slate-500 border border-white/5" : "bg-slate-50 text-slate-400 border-slate-200"
+                                )}
+                                style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
+                              >
+                                {m.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className={cn(
+                                    "text-sm font-bold transition-colors group-hover:text-indigo-400 truncate",
+                                    theme === 'dark' ? "text-white" : "text-slate-900"
+                                  )}>{m.name}</p>
+                                  <span 
+                                    className={cn(
+                                      "px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight border flex-shrink-0",
+                                      theme === 'dark' 
+                                        ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" 
+                                        : "bg-indigo-50 text-indigo-600 border-indigo-200"
+                                    )}
+                                    title={`${count} escalação(ões) no mês`}
+                                  >
+                                    {count}x
+                                  </span>
+                                </div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                                  {m.type === 'leader' ? 'Líder' : 'Auxiliar'}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className={cn(
-                                "text-sm font-bold transition-colors group-hover:text-indigo-400",
-                                theme === 'dark' ? "text-white" : "text-slate-900"
-                              )}>{m.name}</p>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                                {m.type === 'leader' ? 'Líder' : 'Auxiliar'}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         <div className={cn(
                           "pt-4 border-t flex items-center gap-2 text-[10px] font-black uppercase tracking-widest",
                           theme === 'dark' ? "border-white/5 text-slate-600" : "border-slate-100 text-slate-400"
@@ -681,25 +725,41 @@ export default function App() {
                             getDay(assignment.date) === 0 ? "bg-indigo-500/10 border-indigo-500/20" : 
                             getDay(assignment.date) === 3 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"
                           )}>
-                            {assignment.team.members.map((m, mIdx) => (
-                              <div key={mIdx} className="flex items-center gap-1.5 overflow-hidden">
-                                <div 
-                                  className={cn(
-                                    "w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[8px] font-bold",
-                                    m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/10 text-slate-400" : "bg-slate-200 text-slate-500"
-                                  )}
-                                  style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
-                                >
-                                  {m.name.charAt(0).toUpperCase()}
+                            {assignment.team.members.map((m, mIdx) => {
+                              const count = memberAppearanceCounts.get(m.id) || 0;
+                              return (
+                                <div key={mIdx} className="flex items-center justify-between gap-1 overflow-hidden">
+                                  <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
+                                    <div 
+                                      className={cn(
+                                        "w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[8px] font-bold",
+                                        m.type === 'leader' ? "text-white" : theme === 'dark' ? "bg-white/10 text-slate-400" : "bg-slate-200 text-slate-500"
+                                      )}
+                                      style={m.type === 'leader' && m.color ? { backgroundColor: m.color } : {}}
+                                    >
+                                      {m.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className={cn(
+                                      "text-[9px] font-bold truncate transition-colors",
+                                      theme === 'dark' ? "text-white" : "text-slate-700"
+                                    )}>
+                                      {m.name.split(' ')[0]}
+                                    </span>
+                                  </div>
+                                  <span 
+                                    className={cn(
+                                      "text-[8px] font-black px-1 py-0.2 rounded-full border flex-shrink-0 leading-none",
+                                      theme === 'dark' 
+                                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" 
+                                        : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                    )}
+                                    title={`${count}x no mês`}
+                                  >
+                                    {count}x
+                                  </span>
                                 </div>
-                                <span className={cn(
-                                  "text-[9px] font-bold truncate transition-colors",
-                                  theme === 'dark' ? "text-white" : "text-slate-700"
-                                )}>
-                                  {m.name.split(' ')[0]}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                             <div className="text-[7px] font-black text-slate-500 mt-1 uppercase tracking-tighter">
                               {getServiceTimeRange(assignment.date)}
                             </div>
@@ -720,6 +780,82 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Resumo de Integrantes Escalados no Mês */}
+            {scheduledMembersSummary.length > 0 && (
+              <div className={cn(
+                "mt-8 p-6 rounded-3xl border shadow-xl transition-colors",
+                theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
+              )}>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className={cn(
+                    "p-2.5 rounded-2xl flex-shrink-0",
+                    theme === 'dark' ? "bg-indigo-500/10 text-indigo-400" : "bg-indigo-50 text-indigo-600"
+                  )}>
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h3 className={cn(
+                      "text-base font-bold tracking-tight",
+                      theme === 'dark' ? "text-white" : "text-slate-900"
+                    )}>
+                      Resumo de Integrantes Escalados
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Total de escala(s) de cada pessoa no mês de {format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {scheduledMembersSummary.map(({ member, count }) => (
+                    <div 
+                      key={member.id} 
+                      className={cn(
+                        "p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all",
+                        theme === 'dark' 
+                          ? "bg-[#0a0e14]/60 border-white/5 hover:border-white/10" 
+                          : "bg-slate-50/80 border-slate-200/80 hover:border-slate-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div 
+                          className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shadow-inner flex-shrink-0",
+                            member.type === 'leader' 
+                              ? "text-white" 
+                              : theme === 'dark' ? "bg-white/10 text-slate-300 border border-white/5" : "bg-slate-200 text-slate-700"
+                          )}
+                          style={member.type === 'leader' && member.color ? { backgroundColor: member.color } : {}}
+                        >
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={cn(
+                            "text-xs font-bold truncate",
+                            theme === 'dark' ? "text-white" : "text-slate-900"
+                          )}>
+                            {member.name}
+                          </p>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                            {member.type === 'leader' ? 'Líder' : 'Auxiliar'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-xs font-black border flex-shrink-0 leading-none shadow-sm",
+                        theme === 'dark'
+                          ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+                          : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                      )}>
+                        {count}x
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
