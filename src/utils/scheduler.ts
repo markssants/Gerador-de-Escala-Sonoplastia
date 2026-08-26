@@ -169,25 +169,7 @@ export function generateSchedule(
     };
 
     const leaderResult = pickLeader();
-
-    // Rule: Wales and Arthur always together
-    // Wales is a leader, Arthur is a participant.
-    let participantPool = participants;
-    const walesName = 'Wales';
-    const arthurName = 'Arthur';
-    const arthurMember = participants.find(p => p.name === arthurName);
-
-    if (arthurMember) {
-      if (leaderResult.member.name === walesName) {
-        // If Wales is selected as leader, force Arthur as participant
-        participantPool = [arthurMember];
-      } else {
-        // If any other leader is selected, ensure Arthur is NOT selected
-        participantPool = participants.filter(p => p.name !== arthurName);
-      }
-    }
-
-    const participantResult = participantPool.length > 0 ? pickParticipant(participantPool) : null;
+    const participantResult = participants.length > 0 ? pickParticipant(participants) : null;
 
     let finalConflictReason = '';
     if (leaderResult.hasConflict) finalConflictReason = `Líder: ${leaderResult.conflictReason}`;
