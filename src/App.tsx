@@ -52,7 +52,7 @@ export default function App() {
         cleanMembers.push({ id: '7', name: 'Arthur', type: 'participant', unavailableDays: [], roles: [] });
       }
       return cleanMembers.map((m: Member) => {
-        if (m.name === 'Edmilson' || m.name === 'Edimilson') {
+        if (/ed[i]?milson/i.test(m.name)) {
           return { ...m, type: 'leader', color: m.color || '#f59e0b' };
         }
         return m;

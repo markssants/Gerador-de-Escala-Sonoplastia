@@ -30,7 +30,10 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
   const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Arthur', 'Tamara', 'Carlos', 'Yan'];
 
   const diaconos = diaconosOrder
-    .map(name => members.find(m => m.name === name && m.roles?.includes('Diácono')))
+    .map(name => members.find(m => {
+      const matchName = (/ed[i]?milson/i.test(name) && /ed[i]?milson/i.test(m.name)) || m.name.toLowerCase() === name.toLowerCase();
+      return matchName && m.roles?.includes('Diácono');
+    }))
     .filter((m): m is Member => !!m);
 
   const recepcionistas = recepcionistasOrder

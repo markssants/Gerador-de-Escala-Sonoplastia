@@ -39,30 +39,44 @@ export function generateSchedule(
   const serviceDays = allServiceDays.filter(day => !skippedDates.includes(day.toISOString()));
   const assignments: Assignment[] = [];
   
-  const leaders = members.filter(m => m.type === 'leader');
-  const participants = members.filter(m => m.type === 'participant');
+  const normalizedMembers = members.map(m => {
+    if (/ed[i]?milson/i.test(m.name)) {
+      return { ...m, type: 'leader' as const, color: m.color || '#f59e0b' };
+    }
+    return m;
+  });
+
+  const leaders = normalizedMembers.filter(m => m.type === 'leader');
+  const participants = normalizedMembers.filter(m => m.type === 'participant');
 
   if (leaders.length === 0) return [];
 
   // Track assignment counts for this specific generation
   const counts = new Map<string, number>();
-  members.forEach(m => counts.set(m.id, 0));
+  normalizedMembers.forEach(m => counts.set(m.id, 0));
 
   serviceDays.forEach((day, index) => {
     const dayOfWeek = getDay(day) as DayOfWeek;
     
     const getLeaderTier = (m: Member): number => {
-      const isEdmilson = m.name === 'Edmilson' || m.name === 'Edimilson';
+      const isEdmilson = /ed[i]?milson/i.test(m.name);
       const count = counts.get(m.id) || 0;
       if (!isEdmilson) {
-        // Priority for main leaders: 2 times per month each
-        if (count < 2) return 1;
-        return 4; // Main leaders if already >= 2 times
+        // Priority for main leaders:
+        // Tier 1: 0 times (needs 1st time)
+        // Tier 2: 1 time (needs 2nd time - prioritized over Edmilson's 2nd time)
+        // Tier 4: >= 2 times
+        if (count === 0) return 1;
+        if (count === 1) return 2;
+        return 4;
       } else {
-        // Minor leader (Edmilson): 1 time per month, and 2 times when possible
-        if (count < 1) return 2;
-        if (count < 2) return 3;
-        return 5; // Edmilson if already >= 2 times
+        // Minor leader (Edmilson): 1 time per month guaranteed, 2 times when slots permit
+        // Tier 1: 0 times (guaranteed 1x alongside other leaders)
+        // Tier 3: 1 time (gets 2nd time only after all main leaders got their 2 times)
+        // Tier 5: >= 2 times
+        if (count === 0) return 1;
+        if (count === 1) return 3;
+        return 5;
       }
     };
 
