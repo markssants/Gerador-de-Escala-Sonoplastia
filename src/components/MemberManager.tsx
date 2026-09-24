@@ -1,18 +1,33 @@
-import React from 'react';
-import { Trash2, Users, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Trash2, 
+  Users, 
+  Clock, 
+  Sparkles, 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar,
+  FileText,
+  RotateCcw
+} from 'lucide-react';
 import { format, getDay, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Member, DayOfWeek } from '../types';
 import { DAYS_OF_WEEK_LABELS } from '../constants';
 import { cn } from '../utils/cn';
+import { MessageImportModal } from './MessageImportModal';
 
 interface MemberManagerProps {
   members: Member[];
   currentDate: Date;
   currentMonthServiceDays: Date[];
   onToggleUnavailableDate: (memberId: string, date: string) => void;
+  onApplyImportedUnavailableDates: (items: { memberId: string; date: string; role: string }[], replaceMonth: boolean) => void;
+  onClearMonthUnavailableDates: () => void;
   onRemoveMember: (id: string) => void;
   onResetToDefault: () => void;
+  onPrevMonth?: () => void;
+  onNextMonth?: () => void;
   theme: 'dark' | 'light';
 }
 
@@ -21,10 +36,16 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
   currentDate,
   currentMonthServiceDays,
   onToggleUnavailableDate,
+  onApplyImportedUnavailableDates,
+  onClearMonthUnavailableDates,
   onRemoveMember,
   onResetToDefault,
+  onPrevMonth,
+  onNextMonth,
   theme,
 }) => {
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
   const diaconosOrder = ['Kalebe', 'Wales', 'Marcos', 'Joabe', 'Claudinei', 'L. Davi', 'Edmilson', 'Victor', 'Weverson', 'L. Fernando'];
   const recepcionistasOrder = ['Letícia', 'Weverson', 'Milena', 'L. Davi', 'Marcos'];
   const semAtribuicaoOrder = ['Kauan', 'Kalebe', 'Arthur', 'Tamara', 'Carlos', 'Yan'];
@@ -167,6 +188,97 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Action Header & Month Navigation */}
+      <div className={cn(
+        "p-6 rounded-2xl shadow-xl border flex flex-col md:flex-row items-center justify-between gap-6 transition-colors",
+        theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
+      )}>
+        {/* Month Selector */}
+        <div className="flex items-center gap-4">
+          {onPrevMonth && (
+            <button 
+              onClick={onPrevMonth}
+              className={cn(
+                "p-2.5 rounded-xl transition-all border",
+                theme === 'dark' 
+                  ? "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5" 
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200"
+              )}
+              title="Mês anterior"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          )}
+
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 block">
+              Mês Selecionado
+            </span>
+            <h2 className={cn(
+              "text-xl font-bold capitalize tracking-tight transition-colors",
+              theme === 'dark' ? "text-white" : "text-slate-900"
+            )}>
+              {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+            </h2>
+          </div>
+
+          {onNextMonth && (
+            <button 
+              onClick={onNextMonth}
+              className={cn(
+                "p-2.5 rounded-xl transition-all border",
+                theme === 'dark' 
+                  ? "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5" 
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200"
+              )}
+              title="Próximo mês"
+            >
+              <ChevronRight size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-5 py-3 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-[0.98] text-sm"
+          >
+            <Sparkles size={18} />
+            <span>Importar por Mensagem</span>
+          </button>
+
+          <button
+            onClick={onClearMonthUnavailableDates}
+            className={cn(
+              "p-3 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5",
+              theme === 'dark' 
+                ? "bg-white/5 border-white/5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:text-rose-600 hover:bg-rose-50"
+            )}
+            title="Limpar todas as indisponibilidades deste mês"
+          >
+            <Trash2 size={16} />
+            <span>Limpar Mês</span>
+          </button>
+
+          <button 
+            onClick={onResetToDefault}
+            className={cn(
+              "px-3 py-3 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5",
+              theme === 'dark' 
+                ? "bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:bg-white/10" 
+                : "bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            )}
+            title="Resetar todos os membros para a lista padrão"
+          >
+            <RotateCcw size={14} />
+            <span>Padrão</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main List */}
       <div className={cn(
         "rounded-2xl shadow-xl border overflow-hidden transition-colors",
         theme === 'dark' ? "bg-[#121720] border-white/5" : "bg-white border-slate-200"
@@ -179,21 +291,14 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
             <h2 className={cn(
               "text-lg font-semibold transition-colors",
               theme === 'dark' ? "text-white" : "text-slate-900"
-            )}>Gerenciamento de Disponibilidade</h2>
-            <p className="text-xs text-slate-500 mt-1">Marque os dias que o membro já possui compromisso em {format(currentDate, 'MMMM', { locale: ptBR })}</p>
+            )}>
+              Disponibilidade Individual por Culto
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Clique nos dias para marcar/desmarcar manualmente ou use o botão <strong>Importar por Mensagem</strong> acima.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={onResetToDefault}
-              className={cn(
-                "text-[10px] font-bold uppercase tracking-widest transition-colors",
-                theme === 'dark' ? "text-slate-500 hover:text-indigo-400" : "text-slate-400 hover:text-indigo-600"
-              )}
-            >
-              Resetar para Padrão
-            </button>
-            <Users size={24} className={theme === 'dark' ? "text-slate-700" : "text-slate-200"} />
-          </div>
+          <Users size={24} className={theme === 'dark' ? "text-slate-700" : "text-slate-200"} />
         </div>
         
         <div className={cn(
@@ -263,7 +368,16 @@ export const MemberManager: React.FC<MemberManagerProps> = ({
         </div>
       </div>
 
-      
+      {/* Message Import Modal */}
+      <MessageImportModal 
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        members={members}
+        currentDate={currentDate}
+        serviceDays={currentMonthServiceDays}
+        onApply={onApplyImportedUnavailableDates}
+        theme={theme}
+      />
     </div>
   );
 };

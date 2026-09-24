@@ -205,3 +205,26 @@ export function generateSchedule(
 
   return assignments;
 }
+
+export function checkAssignmentConflict(date: Date, assignedMembers: Member[]): { hasConflict: boolean; conflictReason?: string } {
+  const dow = getDay(date) as DayOfWeek;
+  const reasons: string[] = [];
+
+  assignedMembers.forEach(m => {
+    const rolePrefix = m.type === 'leader' ? 'Líder' : 'Auxiliar';
+    const recurring = m.unavailableDays?.find(ud => ud.dayOfWeek === dow);
+    const specific = m.unavailableDates?.find(ud => isSameDay(new Date(ud.date), date));
+
+    if (recurring) {
+      reasons.push(`${rolePrefix}: ${recurring.role}`);
+    } else if (specific) {
+      reasons.push(`${rolePrefix}: ${specific.role}`);
+    }
+  });
+
+  return {
+    hasConflict: reasons.length > 0,
+    conflictReason: reasons.length > 0 ? reasons.join(', ') : undefined
+  };
+}
+

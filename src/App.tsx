@@ -17,7 +17,9 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
-  X
+  X,
+  ArrowLeftRight,
+  Edit3
 } from 'lucide-react';
 import { 
   format, 
@@ -38,6 +40,7 @@ import { Member, Team, Assignment, DayOfWeek, MemberType } from './types';
 import { generateSchedule, getServiceDays } from './utils/scheduler';
 import { MemberManager } from './components/MemberManager';
 import { MemberList } from './components/MemberList';
+import { ScheduleEditorModal } from './components/ScheduleEditorModal';
 import { cn } from './utils/cn';
 import { DAYS_OF_WEEK_LABELS, WEEK_DAYS } from './constants';
 
@@ -87,6 +90,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [skippedDates, setSkippedDates] = useState<string[]>([]);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
+  const [scheduleEditorSelectedDate, setScheduleEditorSelectedDate] = useState<Date | null>(null);
   const scheduleRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('sonosched_theme');
@@ -181,6 +186,40 @@ export default function App() {
     }));
   };
 
+  const handleApplyImportedUnavailableDates = (
+    items: { memberId: string; date: string; role: string }[],
+    replaceMonth: boolean
+  ) => {
+    setMembers(prevMembers => {
+      return prevMembers.map(member => {
+        let dates = member.unavailableDates ? [...member.unavailableDates] : [];
+        
+        if (replaceMonth) {
+          dates = dates.filter(ud => !isSameMonth(new Date(ud.date), currentDate));
+        }
+
+        const memberItems = items.filter(item => item.memberId === member.id);
+        memberItems.forEach(item => {
+          const itemDate = new Date(item.date);
+          dates = dates.filter(d => !isSameDay(new Date(d.date), itemDate));
+          dates.push({ date: item.date, role: item.role });
+        });
+
+        return { ...member, unavailableDates: dates };
+      });
+    });
+  };
+
+  const handleClearMonthUnavailableDates = () => {
+    const monthStr = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+    if (window.confirm(`Deseja desmarcar todas as indisponibilidades do mês de ${monthStr}?`)) {
+      setMembers(prevMembers => prevMembers.map(member => ({
+        ...member,
+        unavailableDates: (member.unavailableDates || []).filter(ud => !isSameMonth(new Date(ud.date), currentDate))
+      })));
+    }
+  };
+
   const getServiceTimeRange = (date: Date) => {
     const dow = getDay(date);
     if (dow === 6) return '08:40 as 12:00';
@@ -204,6 +243,11 @@ export default function App() {
       skippedDates
     );
     setSchedule(newSchedule);
+  };
+
+  const handleOpenScheduleEditor = (date?: Date) => {
+    setScheduleEditorSelectedDate(date || null);
+    setIsScheduleEditorOpen(true);
   };
 
   const toggleSkippedDate = (dateIso: string) => {
@@ -378,8 +422,12 @@ export default function App() {
             currentDate={currentDate}
             currentMonthServiceDays={currentMonthServiceDays}
             onToggleUnavailableDate={toggleUnavailableDate}
+            onApplyImportedUnavailableDates={handleApplyImportedUnavailableDates}
+            onClearMonthUnavailableDates={handleClearMonthUnavailableDates}
             onRemoveMember={handleRemoveMember}
             onResetToDefault={handleResetToDefault}
+            onPrevMonth={() => setCurrentDate(subMonths(currentDate, 1))}
+            onNextMonth={() => setCurrentDate(addMonths(currentDate, 1))}
             theme={theme}
           />
         ) : activeTab === 'all_members' ? (
@@ -460,18 +508,34 @@ export default function App() {
 
                 <div className="flex items-center gap-3">
                   {schedule.length > 0 && (
-                    <button 
-                      onClick={() => setShowExportModal(true)}
-                      className={cn(
-                        "p-3.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-sm",
-                        theme === 'dark' 
-                          ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5" 
-                          : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
-                      )}
-                    >
-                      <Download size={18} />
-                      Exportar
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => handleOpenScheduleEditor()}
+                        className={cn(
+                          "p-3.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-sm shadow-md active:scale-95",
+                          theme === 'dark' 
+                            ? "bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30 shadow-indigo-500/10" 
+                            : "bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200 shadow-indigo-500/5"
+                        )}
+                        title="Modificar ou permutar membros da escala gerada"
+                      >
+                        <ArrowLeftRight size={18} />
+                        Modificar Escala
+                      </button>
+
+                      <button 
+                        onClick={() => setShowExportModal(true)}
+                        className={cn(
+                          "p-3.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-sm",
+                          theme === 'dark' 
+                            ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5" 
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                        )}
+                      >
+                        <Download size={18} />
+                        Exportar
+                      </button>
+                    </>
                   )}
                   <button 
                     onClick={() => {
@@ -622,11 +686,28 @@ export default function App() {
                             {format(assignment.date, "dd 'de' MMMM", { locale: ptBR })}
                           </h4>
                         </div>
-                        <div className={cn(
-                          "px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors",
-                          theme === 'dark' ? "bg-black/20 text-slate-400 border-white/5" : "bg-slate-50 text-slate-500 border-slate-200"
-                        )}>
-                          {getServiceTimeRange(assignment.date)}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenScheduleEditor(assignment.date)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 shadow-sm active:scale-95",
+                              theme === 'dark' 
+                                ? "bg-white/10 hover:bg-white/20 text-indigo-300 border-white/10 hover:border-indigo-500/40" 
+                                : "bg-white hover:bg-slate-50 text-indigo-600 border-slate-200 hover:border-indigo-300"
+                            )}
+                            title="Modificar ou trocar integrantes deste culto"
+                          >
+                            <Edit3 size={11} className="text-indigo-400" />
+                            <span>Trocar / Editar</span>
+                          </button>
+
+                          <div className={cn(
+                            "px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors",
+                            theme === 'dark' ? "bg-black/20 text-slate-400 border-white/5" : "bg-slate-50 text-slate-500 border-slate-200"
+                          )}>
+                            {getServiceTimeRange(assignment.date)}
+                          </div>
                         </div>
                       </div>
                       <div className="p-5 space-y-4">
@@ -719,12 +800,16 @@ export default function App() {
                         </span>
                         
                         {assignment && (
-                          <div className={cn(
-                            "rounded-lg p-1.5 space-y-1 border shadow-lg",
-                            assignment.hasConflict ? "bg-rose-500/10 border-rose-500/20" :
-                            getDay(assignment.date) === 0 ? "bg-indigo-500/10 border-indigo-500/20" : 
-                            getDay(assignment.date) === 3 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"
-                          )}>
+                          <div 
+                            onClick={() => handleOpenScheduleEditor(assignment.date)}
+                            title="Clique para modificar ou trocar os integrantes deste culto"
+                            className={cn(
+                              "rounded-lg p-1.5 space-y-1 border shadow-lg cursor-pointer transition-all hover:ring-2 hover:ring-indigo-500/60 hover:scale-[1.02]",
+                              assignment.hasConflict ? "bg-rose-500/10 border-rose-500/20" :
+                              getDay(assignment.date) === 0 ? "bg-indigo-500/10 border-indigo-500/20" : 
+                              getDay(assignment.date) === 3 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"
+                            )}
+                          >
                             {assignment.team.members.map((m, mIdx) => {
                               const count = memberAppearanceCounts.get(m.id) || 0;
                               return (
@@ -947,6 +1032,17 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Modal para Modificar Escala Manualmente */}
+      <ScheduleEditorModal
+        isOpen={isScheduleEditorOpen}
+        onClose={() => setIsScheduleEditorOpen(false)}
+        schedule={schedule}
+        members={members}
+        onUpdateSchedule={setSchedule}
+        initialSelectedDate={scheduleEditorSelectedDate}
+        theme={theme}
+      />
     </div>
   );
 }
